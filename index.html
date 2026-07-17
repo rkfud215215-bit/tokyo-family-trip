@@ -1102,12 +1102,21 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         resolve(null);
         return;
       }
+      const request = {
+        origins: [origin],
+        destinations: [destination],
+        travelMode: window.google.maps.TravelMode[googleMode],
+      };
+      if (googleMode === "TRANSIT") {
+        // 지금 이 순간 열차가 다니는지와 무관하게(심야 등) 항상 결과가 나오도록,
+        // "내일 오전 10시 출발" 기준으로 고정해서 물어봄 — 여행 계획용이라 실시간 여부는 중요하지 않음
+        const departureTime = new Date();
+        departureTime.setDate(departureTime.getDate() + 1);
+        departureTime.setHours(10, 0, 0, 0);
+        request.transitOptions = { departureTime };
+      }
       distanceServiceRef.current.getDistanceMatrix(
-        {
-          origins: [origin],
-          destinations: [destination],
-          travelMode: window.google.maps.TravelMode[googleMode],
-        },
+        request,
         (response, status) => {
           const el = response?.rows?.[0]?.elements?.[0];
           if (status === "OK" && el && el.status === "OK") {
@@ -1129,7 +1138,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
 
   const TWENTY_MIN = 20 * 60;
   // 이동수단 선정 규칙이 바뀔 때마다 올려서, 예전 알고리즘으로 저장된 구간을 자동으로 다시 계산시킴
-  const SEGMENT_RULE_VERSION = 2;
+  const SEGMENT_RULE_VERSION = 3;
 
   // 규칙: 도보 20분 이내면 도보, 아니면 택시가 20분 이내면 택시, 그것도 넘으면 대중교통
   // (AI가 이동수단을 추측하지 않고, 매번 구글맵 실측 시간으로 규칙에 따라 자동 결정)
