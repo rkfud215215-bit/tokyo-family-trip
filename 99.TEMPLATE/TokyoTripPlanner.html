@@ -123,7 +123,7 @@ const FAMILY_MEMBERS = ["아빠", "엄마", "오빠", "가령"];
 const TRIP_STORAGE_KEY = "tokyo-trip-shared-data";
 
 const GLASS =
-  "bg-white/70 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
+  "bg-white/90 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -142,7 +142,10 @@ function directionsUrl(lat, lng) {
 }
 
 function placeMapUrl(item) {
-  if (item.placeId) return `https://www.google.com/maps/place/?q=place_id:${item.placeId}`;
+  if (item.placeId) {
+    const query = encodeURIComponent(item.name || item.address || "place");
+    return `https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${item.placeId}`;
+  }
   if (item.lat != null && item.lng != null)
     return `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`;
   return null;
@@ -592,7 +595,6 @@ function TokyoTripPlanner() {
         lng: place.geometry.location.lng(),
         placeId: place.place_id,
         category: daySearchCategory,
-        mapUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
         photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 }) : null,
       };
       setDays((prev) => ({
@@ -1259,7 +1261,6 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
             placeId: item.placeId,
             category: item.category,
             photoUrl: item.photoUrl || null,
-            mapUrl: `https://www.google.com/maps/place/?q=place_id:${item.placeId}`,
           },
         ],
         segments: [],
