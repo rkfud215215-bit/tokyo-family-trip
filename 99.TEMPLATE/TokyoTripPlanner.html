@@ -159,6 +159,16 @@ function minutesFromDurationText(text) {
   return (h ? parseInt(h[1], 10) * 60 : 0) + (m ? parseInt(m[1], 10) : 0);
 }
 
+// 구글 플레이스 types(예: restaurant, cafe...)로 맛집/관광지 자동 분류
+const FOOD_PLACE_TYPES = [
+  "restaurant", "cafe", "bakery", "bar", "food",
+  "meal_takeaway", "meal_delivery", "night_club",
+];
+function inferCategory(placeTypes) {
+  if (placeTypes && placeTypes.some((t) => FOOD_PLACE_TYPES.includes(t))) return "맛집";
+  return "관광지";
+}
+
 function googleModeLabel(googleMode) {
   if (googleMode === "WALKING") return "도보";
   if (googleMode === "DRIVING") return "택시";
@@ -577,11 +587,10 @@ function TokyoTripPlanner() {
   /* ---------------- Day별 장소 검색 Autocomplete ---------------- */
   const daySearchRef = useRef(null);
   const [daySearchValue, setDaySearchValue] = useState("");
-  const [daySearchCategory, setDaySearchCategory] = useState("관광지");
   useEffect(() => {
     if (!mapsLoaded || !daySearchRef.current || !window.google || activeTab !== "schedule") return;
     const ac = new window.google.maps.places.Autocomplete(daySearchRef.current, {
-      fields: ["geometry", "name", "place_id", "formatted_address", "photos"],
+      fields: ["geometry", "name", "place_id", "formatted_address", "photos", "types"],
       componentRestrictions: { country: "jp" },
       bounds: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }).getBounds(),
     });
@@ -594,7 +603,7 @@ function TokyoTripPlanner() {
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
         placeId: place.place_id,
-        category: daySearchCategory,
+        category: inferCategory(place.types),
         photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 }) : null,
       };
       setDays((prev) => ({
@@ -609,7 +618,7 @@ function TokyoTripPlanner() {
       if (daySearchRef.current) daySearchRef.current.value = "";
     });
     return () => listener.remove();
-  }, [mapsLoaded, activeTab, currentDay, daySearchCategory]);
+  }, [mapsLoaded, activeTab, currentDay]);
 
   /* ---------------- 경로 구성 ---------------- */
   const computeRoute = useCallback(
@@ -869,7 +878,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
   useEffect(() => {
     if (!mapsLoaded || !archiveSearchRef.current || !window.google || activeTab !== "archive") return;
     const ac = new window.google.maps.places.Autocomplete(archiveSearchRef.current, {
-      fields: ["geometry", "name", "place_id", "formatted_address", "photos"],
+      fields: ["geometry", "name", "place_id", "formatted_address", "photos", "types"],
       componentRestrictions: { country: "jp" },
       bounds: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }).getBounds(),
     });
@@ -881,7 +890,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         {
           id: uid(),
           name: place.name,
-          category: archiveCategory,
+          category: inferCategory(place.types),
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),
           placeId: place.place_id,
@@ -898,7 +907,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
       if (archiveSearchRef.current) archiveSearchRef.current.value = "";
     });
     return () => listener.remove();
-  }, [mapsLoaded, activeTab, archiveCategory]);
+  }, [mapsLoaded, activeTab]);
 
   const updateArchive = (id, patch) =>
     setArchives((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
@@ -1525,26 +1534,9 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                 </div>
                 <input
                   ref={daySearchRef}
-                  placeholder="가고 싶은 장소를 검색하세요"
+                  placeholder="가고 싶은 장소를 검색하세요 (맛집/관광지 자동 구분)"
                   className="w-full px-4 py-2.5 rounded-2xl bg-stone-50/70 border border-stone-100 text-sm outline-none focus:ring-2 focus:ring-stone-300"
                 />
-                <div className="flex flex-wrap items-center gap-2 -mt-2">
-                  {["관광지", "맛집"].map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setDaySearchCategory(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium flex items-center gap-1 shrink-0 ${
-                        daySearchCategory === c
-                          ? "bg-slate-900 text-white"
-                          : "bg-stone-50 text-stone-600 border border-stone-100"
-                      }`}
-                    >
-                      {c === "맛집" ? "🍜" : "📸"} {c}
-                    </button>
-                  ))}
-                  <span className="text-[11px] text-stone-600">검색 전에 종류를 골라두면 이모지가 붙어요</span>
-                </div>
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-stone-600 font-medium">
                     {DAY_META[currentDay].label} 방문 순서 (번호는 지도 마커와 동일)
@@ -1821,7 +1813,7 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
               <div className="flex flex-col md:flex-row gap-3">
                 <input
                   ref={archiveSearchRef}
-                  placeholder="장소를 검색하세요"
+                  placeholder="장소를 검색하세요 (맛집/관광지 자동 구분)"
                   className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50/70 border border-stone-100 text-sm outline-none focus:ring-2 focus:ring-stone-300"
                 />
                 <div className="flex gap-2">
@@ -1829,6 +1821,7 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                     <button
                       key={c}
                       onClick={() => setArchiveCategory(c)}
+                      title="AI 추천받기에 쓰일 분류예요"
                       className={`px-4 py-2.5 rounded-2xl text-sm font-medium flex items-center gap-1.5 ${
                         archiveCategory === c
                           ? "bg-slate-900 text-white"
@@ -1841,6 +1834,9 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                   ))}
                 </div>
               </div>
+              <p className="text-[11px] text-stone-500 -mt-1">
+                위 토글은 아래 "AI 추천받기"에 쓰이는 분류예요. 직접 검색한 장소는 자동으로 맛집/관광지가 구분돼요.
+              </p>
             </GlassCard>
 
             <GlassCard className="p-5 flex flex-col gap-4">
