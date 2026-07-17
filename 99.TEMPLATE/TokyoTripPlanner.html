@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>도쿄 가족여행 플래너 & 경비 대시보드</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.25.6/babel.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-thumb { background: #a7f3d0; border-radius: 999px; }
+</style>
+</head>
+<body>
+<noscript>이 앱을 사용하려면 자바스크립트를 활성화해주세요.</noscript>
+<div id="root">
+  <div style="font-family:sans-serif;padding:40px;text-align:center;color:#9ca3af;">불러오는 중입니다...</div>
+</div>
+<script>
+  window.addEventListener("error", function (e) {
+    var root = document.getElementById("root");
+    if (root && (!window.React || !window.ReactDOM || !window.Babel)) {
+      root.innerHTML =
+        '<div style="font-family:sans-serif;padding:40px;max-width:480px;margin:0 auto;color:#b91c1c;">' +
+        '<b>스크립트 로드 오류</b><br/>React/Babel CDN을 불러오지 못했어요. 인터넷 연결을 확인하거나, ' +
+        '이 파일을 실제 브라우저(더블클릭으로 열기)에서 열어보세요.<br/><br/>' +
+        "<code style='font-size:12px;color:#7f1d1d;'>" + (e.message || "") + "</code></div>";
+    }
+  });
+</script>
+
+<script type="text/babel" data-presets="react">
+/* ---- 아이콘 (lucide-react 대체용 인라인 SVG, CDN 없이 동작) ---- */
+const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+function IconBase({ size = 18, className = "", children }) {
+  return (
+    <svg
+      width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      className={className}
+    >
+      {children}
+    </svg>
+  );
+}
+const Plane = (p) => <IconBase {...p}><path d="M22 2 15 22l-4-9-9-4 20-7z"/><path d="M22 2 11 13"/></IconBase>;
+const Home = (p) => <IconBase {...p}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></IconBase>;
+const MapPin = (p) => <IconBase {...p}><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></IconBase>;
+const Search = (p) => <IconBase {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></IconBase>;
+const Plus = (p) => <IconBase {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></IconBase>;
+const X = (p) => <IconBase {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></IconBase>;
+const Check = (p) => <IconBase {...p}><polyline points="20 6 9 17 4 12"/></IconBase>;
+const Star = (p) => <IconBase {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></IconBase>;
+const Wallet = (p) => <IconBase {...p}><path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5h-5a2 2 0 0 1 0-4z"/></IconBase>;
+const Bookmark = (p) => <IconBase {...p}><path d="M19 21 12 16 5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></IconBase>;
+const Sparkles = (p) => <IconBase {...p}><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 3v4"/><path d="M21 5h-4"/></IconBase>;
+const Loader2 = (p) => <IconBase {...p}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></IconBase>;
+const DollarSign = (p) => <IconBase {...p}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></IconBase>;
+const Users = (p) => <IconBase {...p}><circle cx="9" cy="7" r="4"/><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></IconBase>;
+const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></IconBase>;
+const Trash2 = (p) => <IconBase {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></IconBase>;
+const Utensils = (p) => <IconBase {...p}><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><line x1="7" y1="2" x2="7" y2="22"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></IconBase>;
+const Camera = (p) => <IconBase {...p}><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="4"/></IconBase>;
+const AlertCircle = (p) => <IconBase {...p}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></IconBase>;
+const RouteIcon = (p) => <IconBase {...p}><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/></IconBase>;
+const Navigation = (p) => <IconBase {...p}><polygon points="3 11 22 2 13 21 11 13 3 11"/></IconBase>;
+const ChevronUp = (p) => <IconBase {...p}><polyline points="18 15 12 9 6 15"/></IconBase>;
+const ChevronDown = (p) => <IconBase {...p}><polyline points="6 9 12 15 18 9"/></IconBase>;
+
+
+
+/* =========================================================================
+   🔑 API 키 설정 (사용자가 직접 발급받은 키를 아래에 입력하세요)
+   - Google Maps API Key: Maps JavaScript API + Places API 활성화 필요
+   - Gemini API Key: Google AI Studio에서 발급 (Generative Language API)
+   ⚠️ 보안 주의: 이 값들은 브라우저에 그대로 노출됩니다.
+     Google Cloud Console에서 Maps 키는 반드시 HTTP 리퍼러 제한을 걸어주세요.
+   ========================================================================= */
+const GOOGLE_MAPS_API_KEY = "AIzaSyCycPTrUovM8bRTGHriMDaMfjWv1hRzyl0";
+const GEMINI_API_KEY = "AQ.Ab8RN6Kh5oqEAwUCzSkKUrIht_DcI8lrIilPBqWjtfBvSTtx8A";
+const GEMINI_MODEL = "gemini-flash-latest";
+
+/* 🔒 앱 진입 PIN (숫자 아무거나 원하는 걸로 바꾸세요)
+   ⚠️ 이건 "진짜 보안"이 아니라 가족 외 다른 사람이 실수로 못 열게 막는 정도의 장치예요.
+   파일 소스보기(우클릭 > 페이지 소스 보기)를 하면 이 PIN도, API 키도 그대로 보입니다.
+   즉 이 파일을 아무한테나 공유/업로드하면 안 돼요 — 키가 그대로 노출됩니다. */
+const APP_PIN = "4065";
+
+const AIRPORT = {
+  id: "airport",
+  name: "나리타 국제공항 (NRT)",
+  lat: 35.7647,
+  lng: 140.3864,
+  type: "airport",
+};
+
+const DAY_META = {
+  1: { label: "Day 1", desc: "공항 → 숙소", icon: Plane },
+  2: { label: "Day 2", desc: "숙소 → 숙소", icon: Home },
+  3: { label: "Day 3", desc: "숙소 → 숙소", icon: Home },
+  4: { label: "Day 4", desc: "숙소 → 공항", icon: Plane },
+};
+
+const CATEGORIES = ["식비", "교통", "숙박", "쇼핑", "관광", "기타"];
+const PAYERS = ["아빠", "가령"];
+const FAMILY_MEMBERS = ["아빠", "엄마", "오빠", "가령"];
+const TRIP_STORAGE_KEY = "tokyo-trip-shared-data";
+
+const GLASS =
+  "bg-white border border-stone-100 rounded-3xl shadow-sm shadow-stone-200/60";
+
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+function toKRW(amount, currency, rate) {
+  const n = Number(amount) || 0;
+  if (currency === "JPY") return n * (rate / 100);
+  return n;
+}
+
+function formatKRW(n) {
+  return Math.round(n).toLocaleString("ko-KR") + "원";
+}
+
+function directionsUrl(lat, lng) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
+
+function placeMapUrl(item) {
+  if (item.placeId) return `https://www.google.com/maps/place/?q=place_id:${item.placeId}`;
+  if (item.lat != null && item.lng != null)
+    return `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`;
+  return null;
+}
+
+// 도쿄 중심 좌표 — 장소 검색 시 다른 도시(삿포로 등) 결과가 섞이지 않도록 반경을 제한하는 데 사용
+const TOKYO_CENTER = { lat: 35.6812, lng: 139.7671 };
+const TOKYO_BIAS_RADIUS = 45000; // 45km
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/* Claude 아티팩트 안에서는 window.storage(가족 공유 클라우드 저장)를 쓰고,
+   GitHub Pages 등 바깥에서 열었을 때는 window.storage가 아예 없으므로
+   이 기기 브라우저의 localStorage로 자동 전환해서, 에러 없이 "내 기기에만" 저장되게 함. */
+const HAS_SHARED_STORAGE = typeof window !== "undefined" && !!window.storage;
+
+const storage = HAS_SHARED_STORAGE
+  ? window.storage
+  : {
+      get: async (key) => {
+        const raw = window.localStorage.getItem(key);
+        if (raw === null) throw new Error("not found");
+        return { key, value: raw };
+      },
+      set: async (key, value) => {
+        window.localStorage.setItem(key, value);
+        return { key, value };
+      },
+    };
+
+function tryParseJson(s) {
+  try {
+    return { ok: true, value: JSON.parse(s) };
+  } catch (e) {
+    return { ok: false };
+  }
+}
+
+function repairJsonString(s) {
+  let out = s;
+  out = out.replace(/,(\s*[\]}])/g, "$1"); // trailing commas
+  out = out.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"'); // smart quotes
+  out = out.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ""); // stray control chars
+  return out;
+}
+
+function extractJson(text) {
+  if (!text) throw new Error("빈 응답");
+  const cleaned = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = cleaned.indexOf("{");
+  const arrStart = cleaned.indexOf("[");
+  let s = start;
+  if (arrStart !== -1 && (start === -1 || arrStart < start)) s = arrStart;
+  const end = Math.max(cleaned.lastIndexOf("}"), cleaned.lastIndexOf("]"));
+  const jsonStr = s !== -1 && end !== -1 ? cleaned.slice(s, end + 1) : cleaned;
+
+  let attempt = tryParseJson(jsonStr);
+  if (attempt.ok) return attempt.value;
+
+  // 1차 복구 시도 (트레일링 콤마, 스마트 따옴표 등 흔한 실수 교정)
+  const repaired = repairJsonString(jsonStr);
+  attempt = tryParseJson(repaired);
+  if (attempt.ok) return attempt.value;
+
+  // 배열 응답인데 통째로 파싱이 안 되면, 개별 객체 단위로라도 최대한 살려서 반환
+  if (jsonStr.trim().startsWith("[")) {
+    const objMatches = jsonStr.match(/\{[^{}]*\}/g) || [];
+    const salvaged = [];
+    for (const m of objMatches) {
+      const objAttempt = tryParseJson(repairJsonString(m));
+      if (objAttempt.ok) salvaged.push(objAttempt.value);
+    }
+    if (salvaged.length > 0) return salvaged;
+  }
+
+  throw new Error("AI 응답 형식이 깨져서 해석하지 못했어요. 다시 시도해주세요.");
+}
+
+async function callGemini(prompt, retriesLeft = 2) {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
+      }),
+    }
+  );
+  if (!res.ok) {
+    // 503(서버 혼잡)/429(요청 과다)는 일시적인 오류라 잠깐 기다렸다가 자동 재시도
+    if ((res.status === 503 || res.status === 429) && retriesLeft > 0) {
+      await sleep((3 - retriesLeft) * 1500 + 1000);
+      return callGemini(prompt, retriesLeft - 1);
+    }
+    const errText = await res.text().catch(() => "");
+    if (res.status === 503) {
+      throw new Error("Gemini 서버가 지금 많이 붐벼요. 잠시 후 다시 시도해주세요.");
+    }
+    if (res.status === 429) {
+      throw new Error("무료 사용량을 다 썼어요. 잠시 후(또는 내일) 다시 시도해주세요.");
+    }
+    throw new Error(`Gemini API 오류 (${res.status}): ${errText.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  try {
+    return extractJson(text);
+  } catch (parseErr) {
+    // JSON이 깨진 응답은 재시도하면 다음번엔 정상적으로 나오는 경우가 많음
+    if (retriesLeft > 0) {
+      await sleep(500);
+      return callGemini(prompt, retriesLeft - 1);
+    }
+    throw parseErr;
+  }
+}
+
+/* ---------- 작은 UI 조각들 ---------- */
+
+function GlassCard({ className = "", children }) {
+  return <div className={`${GLASS} ${className}`}>{children}</div>;
+}
+
+function StatBadge({ icon: Icon, label, value, tone = "emerald" }) {
+  const tones = {
+    emerald: "bg-stone-100/80 text-stone-700",
+    pink: "bg-stone-100 text-stone-700",
+    peach: "bg-stone-100 text-stone-700",
+  };
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl px-4 py-3 ${tones[tone]}`}>
+      <Icon size={18} />
+      <div className="flex flex-col leading-tight">
+        <span className="text-xs opacity-70">{label}</span>
+        <span className="font-semibold text-sm">{value}</span>
+      </div>
+    </div>
+  );
+}
+
+function Stars({ value, onChange }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange && onChange(n)}
+          className={onChange ? "cursor-pointer" : "cursor-default"}
+        >
+          <Star
+            size={16}
+            className={n <= value ? "fill-orange-300 text-orange-300" : "text-stone-200"}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ArchiveComments({ comments, myName, onAdd, onRemove }) {
+  const [draft, setDraft] = useState("");
+  const submit = () => {
+    if (!draft.trim()) return;
+    onAdd(draft);
+    setDraft("");
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      {comments && comments.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start justify-between gap-2 bg-stone-50 rounded-lg px-2.5 py-1.5">
+              <p className="text-xs text-stone-600">
+                <span className="font-semibold text-stone-800">{c.author}</span> {c.text}
+              </p>
+              {c.author === myName && (
+                <button onClick={() => onRemove(c.id)} className="text-stone-300 hover:text-rose-400 shrink-0">
+                  <X size={11} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-1.5">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="의견 남기기..."
+          className="flex-1 px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-100 text-xs outline-none"
+        />
+        <button onClick={submit} className="px-2.5 py-1.5 rounded-lg bg-stone-100 text-stone-600 text-xs font-medium">
+          등록
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ========================================================================= */
+
+function TokyoTripPlanner() {
+  const [unlocked, setUnlocked] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinError, setPinError] = useState(false);
+
+  const [myName, setMyName] = useState(null); // 이 브라우저를 쓰는 가족 구성원 (기기별로 저장)
+  const [nameLoaded, setNameLoaded] = useState(false);
+
+  const [dataLoaded, setDataLoaded] = useState(false); // 공유 저장소에서 일정/경비/아카이빙 불러오기 완료 여부
+  const [syncError, setSyncError] = useState("");
+
+  const [activeTab, setActiveTab] = useState("schedule");
+  const [currentDay, setCurrentDay] = useState(1);
+  const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [mapsError, setMapsError] = useState(null);
+
+  const [accommodation, setAccommodation] = useState(null); // {name,lat,lng,placeId,address}
+  const [accInputValue, setAccInputValue] = useState("");
+
+  const [days, setDays] = useState({
+    1: { locations: [], segments: [], memo: "" },
+    2: { locations: [], segments: [], memo: "" },
+    3: { locations: [], segments: [], memo: "" },
+    4: { locations: [], segments: [], memo: "" },
+  });
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizeError, setOptimizeError] = useState("");
+
+  const [exchangeRate, setExchangeRate] = useState(900); // KRW per 100 JPY
+  const [expenses, setExpenses] = useState([]);
+  const [expenseForm, setExpenseForm] = useState({
+    title: "", currency: "JPY", amount: "", payer: "아빠", category: "식비", note: "",
+  });
+
+  const [archives, setArchives] = useState([]);
+  const [addToDayModal, setAddToDayModal] = useState(null); // archive item being added
+
+  /* ---------------- 이 브라우저의 "나" 이름 불러오기 (기기별 개인 저장) ---------------- */
+  useEffect(() => {
+    if (!unlocked) return;
+    (async () => {
+      try {
+        const result = await storage.get("my-name", false);
+        if (result && result.value) setMyName(result.value);
+      } catch (e) {
+        // 저장된 값 없음 — 최초 접속
+      } finally {
+        setNameLoaded(true);
+      }
+    })();
+  }, [unlocked]);
+
+  const chooseMyName = async (name) => {
+    setMyName(name);
+    try {
+      await storage.set("my-name", name, false);
+    } catch (e) {
+      // 저장 실패해도 이번 세션에서는 계속 사용 가능
+    }
+  };
+
+  /* ---------------- 가족 공유 데이터 불러오기 (일정/경비/아카이빙 — 모두가 같은 걸 봄) ---------------- */
+  useEffect(() => {
+    if (!unlocked || !myName) return;
+    (async () => {
+      try {
+        const result = await storage.get(TRIP_STORAGE_KEY, true);
+        if (result && result.value) {
+          const parsed = JSON.parse(result.value);
+          if (parsed.accommodation) setAccommodation(parsed.accommodation);
+          if (parsed.accommodation?.name) {
+            setAccInputValue(parsed.accommodation.name);
+            // accInputRef의 input은 Google Autocomplete 위젯 때문에 uncontrolled로 두고 있어서,
+            // defaultValue만으로는 비동기로 늦게 로드된 값이 화면에 안 뜨는 버그가 있었음 -> 직접 DOM에 반영
+            if (accInputRef.current) accInputRef.current.value = parsed.accommodation.name;
+          }
+          if (parsed.days) setDays(parsed.days);
+          if (typeof parsed.exchangeRate === "number") setExchangeRate(parsed.exchangeRate);
+          if (parsed.expenses) setExpenses(parsed.expenses);
+          if (parsed.archives) setArchives(parsed.archives);
+        }
+      } catch (e) {
+        // 저장된 데이터 없음 — 이 여행의 첫 저장이 될 예정
+      } finally {
+        setDataLoaded(true);
+      }
+    })();
+  }, [unlocked, myName]);
+
+  // 일정/경비/아카이빙이 바뀔 때마다 공유 저장소에 자동 저장 (디바운스)
+  useEffect(() => {
+    if (!unlocked || !myName || !dataLoaded) return;
+    const timer = setTimeout(async () => {
+      try {
+        await storage.set(
+          TRIP_STORAGE_KEY,
+          JSON.stringify({ accommodation, days, exchangeRate, expenses, archives }),
+          true
+        );
+        setSyncError("");
+      } catch (e) {
+        if (HAS_SHARED_STORAGE) {
+          setSyncError("가족 공유 저장에 실패했어요. 네트워크를 확인해주세요.");
+        }
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [unlocked, myName, dataLoaded, accommodation, days, exchangeRate, expenses, archives]);
+
+  /* ---------------- Google Maps 스크립트 로드 (PIN 잠금 해제 후에만) ---------------- */
+  useEffect(() => {
+    if (!unlocked) return;
+    if (window.google && window.google.maps) {
+      setMapsLoaded(true);
+      return;
+    }
+    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY.startsWith("YOUR_")) {
+      setMapsError("no-key");
+      return;
+    }
+    const existing = document.getElementById("gmaps-sdk");
+    if (existing) {
+      existing.addEventListener("load", () => setMapsLoaded(true));
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "gmaps-sdk";
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setMapsLoaded(true);
+    script.onerror = () => setMapsError("load-failed");
+    document.head.appendChild(script);
+  }, [unlocked]);
+
+  /* ---------------- 숙소 검색 Autocomplete ---------------- */
+  const accInputRef = useRef(null);
+  useEffect(() => {
+    if (!mapsLoaded || !accInputRef.current || !window.google) return;
+    const ac = new window.google.maps.places.Autocomplete(accInputRef.current, {
+      fields: ["geometry", "name", "place_id", "formatted_address"],
+      componentRestrictions: { country: "jp" },
+      bounds: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }).getBounds(),
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      if (!place.geometry) return;
+      setAccommodation({
+        id: "accommodation",
+        name: place.name,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        placeId: place.place_id,
+        address: place.formatted_address,
+        type: "hotel",
+      });
+      setAccInputValue(place.name);
+    });
+    return () => listener.remove();
+  }, [mapsLoaded]);
+
+  /* ---------------- Day별 장소 검색 Autocomplete ---------------- */
+  const daySearchRef = useRef(null);
+  const [daySearchValue, setDaySearchValue] = useState("");
+  useEffect(() => {
+    if (!mapsLoaded || !daySearchRef.current || !window.google || activeTab !== "schedule") return;
+    const ac = new window.google.maps.places.Autocomplete(daySearchRef.current, {
+      fields: ["geometry", "name", "place_id", "formatted_address", "photos"],
+      componentRestrictions: { country: "jp" },
+      bounds: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }).getBounds(),
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      if (!place.geometry) return;
+      const loc = {
+        id: uid(),
+        name: place.name,
+        lat: place.geometry.location.lat(),
+        lng: place.geometry.location.lng(),
+        placeId: place.place_id,
+        mapUrl: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
+        photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 400, maxHeight: 300 }) : null,
+      };
+      setDays((prev) => ({
+        ...prev,
+        [currentDay]: {
+          ...prev[currentDay],
+          locations: [...prev[currentDay].locations, loc],
+          segments: [],
+        },
+      }));
+      setDaySearchValue("");
+      if (daySearchRef.current) daySearchRef.current.value = "";
+    });
+    return () => listener.remove();
+  }, [mapsLoaded, activeTab, currentDay]);
+
+  /* ---------------- 경로 구성 ---------------- */
+  const computeRoute = useCallback(
+    (day, middles) => {
+      if (day === 1) {
+        return accommodation
+          ? [AIRPORT, accommodation, ...middles, accommodation]
+          : [AIRPORT, ...middles];
+      }
+      if (day === 4) {
+        return accommodation
+          ? [accommodation, ...middles, AIRPORT]
+          : [...middles, AIRPORT];
+      }
+      return accommodation
+        ? [accommodation, ...middles, accommodation]
+        : [...middles];
+    },
+    [accommodation]
+  );
+
+  const buildRoute = useCallback(
+    (day) => computeRoute(day, days[day]?.locations || []),
+    [computeRoute, days]
+  );
+
+  const removeLocation = (day, id) => {
+    setDays((prev) => ({
+      ...prev,
+      [day]: { ...prev[day], locations: prev[day].locations.filter((l) => l.id !== id), segments: [] },
+    }));
+  };
+
+  const moveLocation = (day, id, direction) => {
+    setDays((prev) => {
+      const list = [...prev[day].locations];
+      const idx = list.findIndex((l) => l.id === id);
+      if (idx === -1) return prev;
+      const swapWith = idx + direction;
+      if (swapWith < 0 || swapWith >= list.length) return prev;
+      [list[idx], list[swapWith]] = [list[swapWith], list[idx]];
+      return { ...prev, [day]: { ...prev[day], locations: list, segments: [] } };
+    });
+  };
+
+  const updateDayMemo = (day, memo) => {
+    setDays((prev) => ({ ...prev, [day]: { ...prev[day], memo } }));
+  };
+
+  /* ---------------- 지도 렌더링 ---------------- */
+  const mapDivRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const polylineRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapsLoaded || activeTab !== "schedule" || !mapDivRef.current || !window.google) return;
+
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapDivRef.current, {
+        center: { lat: 35.6812, lng: 139.7671 },
+        zoom: 11,
+        disableDefaultUI: false,
+        streetViewControl: false,
+        mapTypeControl: false,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#f7f7f5" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#57534e" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#e2e2df" }] },
+          { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#ececea" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
+        ],
+      });
+    }
+    const map = mapInstanceRef.current;
+
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+    if (polylineRef.current) polylineRef.current.setMap(null);
+
+    const route = buildRoute(currentDay);
+    if (route.length === 0) return;
+
+    const bounds = new window.google.maps.LatLngBounds();
+    route.forEach((stop, idx) => {
+      const isHub = stop.type === "airport" || stop.type === "hotel";
+      const marker = new window.google.maps.Marker({
+        position: { lat: stop.lat, lng: stop.lng },
+        map,
+        label: { text: String(idx + 1), color: "#ffffff", fontSize: "12px", fontWeight: "700" },
+        icon: {
+          path: window.google.maps.SymbolPath.CIRCLE,
+          scale: isHub ? 12 : 10,
+          fillColor: isHub ? "#0f172a" : "#4f46e5",
+          fillOpacity: 1,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
+        title: stop.name,
+      });
+      markersRef.current.push(marker);
+      bounds.extend({ lat: stop.lat, lng: stop.lng });
+    });
+
+    polylineRef.current = new window.google.maps.Polyline({
+      path: route.map((s) => ({ lat: s.lat, lng: s.lng })),
+      geodesic: true,
+      strokeColor: "#1e1b4b",
+      strokeOpacity: 0.7,
+      strokeWeight: 4,
+    });
+    polylineRef.current.setMap(map);
+
+    if (route.length > 1) map.fitBounds(bounds, 60);
+    else map.setCenter({ lat: route[0].lat, lng: route[0].lng });
+
+    window.google.maps.event.trigger(map, "resize");
+  }, [mapsLoaded, activeTab, currentDay, accommodation, days, buildRoute]);
+
+  /* ---------------- Gemini 경로 최적화 ---------------- */
+  const optimizeRoute = async () => {
+    const middles = days[currentDay].locations;
+    if (middles.length < 2) {
+      setOptimizeError("최적화하려면 후보 장소가 2곳 이상 필요해요.");
+      return;
+    }
+    if (!accommodation) {
+      setOptimizeError("숙소를 먼저 등록해주세요.");
+      return;
+    }
+    setOptimizing(true);
+    setOptimizeError("");
+    try {
+      const route = buildRoute(currentDay);
+      const startPoint = route[0];
+      const endPoint = route[route.length - 1];
+      const prompt = `당신은 부모님을 동반한 가족여행의 도쿄 동선 최적화 전문가입니다.
+${currentDay}일차 여행이며, 아래는 고정된 출발지/도착지와 자유롭게 순서를 정할 수 있는 후보 장소 목록입니다.
+
+고정 출발지: ${startPoint.name} (위도 ${startPoint.lat}, 경도 ${startPoint.lng})
+고정 도착지: ${endPoint.name} (위도 ${endPoint.lat}, 경도 ${endPoint.lng})
+
+방문 후보 장소 목록 (id로 구분, 순서는 무관):
+${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도: ${m.lng}`).join("\n")}
+
+요청사항:
+1. 부모님 체력 부담을 최소화하고 대중교통 효율이 좋은 순서로 후보 장소들을 정렬하세요.
+2. 출발지 → (정렬된 장소들) → 도착지, 각 구간별로 가장 적절한 이동수단(지하철/도보/택시 중 하나)을 제안하세요.
+3. ★ 소요시간은 절대 언급하지 마세요 — 당신은 실제 시간을 정확히 계산할 수 없습니다. 앱이 실제 소요시간을 직접 계산합니다.
+4. 아래 JSON 형식으로만 응답하세요. 설명 문구, 마크다운, 코드블록 없이 순수 JSON만 반환하세요.
+
+{
+  "orderedIds": ["id1", "id2"],
+  "segments": [
+    {"from": "출발지 이름", "to": "다음 장소 이름", "mode": "지하철"}
+  ]
+}`;
+      const result = await callGemini(prompt);
+      const orderedIds = Array.isArray(result.orderedIds) ? result.orderedIds : [];
+      const reordered = orderedIds
+        .map((id) => middles.find((m) => m.id === id))
+        .filter(Boolean);
+      const remaining = middles.filter((m) => !orderedIds.includes(m.id));
+      const finalOrder = [...reordered, ...remaining];
+      const aiSegments = Array.isArray(result.segments) ? result.segments : [];
+
+      // 최종 순서로 실제 경로를 구성하고, 구간마다 AI가 제안한 교통수단 기준으로 진짜 소요시간을 계산
+      const finalRoute = computeRoute(currentDay, finalOrder);
+      const legs = [];
+      for (let i = 0; i < finalRoute.length - 1; i++) {
+        const from = finalRoute[i];
+        const to = finalRoute[i + 1];
+        const mode = aiSegments[i]?.mode || "지하철";
+        legs.push({ from, to, mode });
+      }
+      const segments = await Promise.all(
+        legs.map(async (leg) => {
+          const info = await getLegInfo(
+            { lat: leg.from.lat, lng: leg.from.lng },
+            { lat: leg.to.lat, lng: leg.to.lng },
+            leg.mode
+          );
+          return {
+            from: leg.from.name,
+            to: leg.to.name,
+            mode: leg.mode,
+            duration: info ? info.duration : "계산 실패",
+            distance: info ? info.distance : null,
+            estimated: !info,
+          };
+        })
+      );
+
+      setDays((prev) => ({
+        ...prev,
+        [currentDay]: {
+          ...prev[currentDay],
+          locations: finalOrder,
+          segments,
+        },
+      }));
+    } catch (err) {
+      setOptimizeError(err.message || "AI 경로 최적화 중 오류가 발생했어요.");
+    } finally {
+      setOptimizing(false);
+    }
+  };
+
+  /* ---------------- 경비 정산 계산 ---------------- */
+  const settlement = useMemo(() => {
+    let dadPaidTotal = 0, garyeongPaidTotal = 0;
+    let unsettledTotal = 0, garyeongPaidUnsettled = 0;
+    expenses.forEach((e) => {
+      const krw = toKRW(e.amount, e.currency, exchangeRate);
+      if (e.payer === "아빠") dadPaidTotal += krw;
+      else garyeongPaidTotal += krw;
+      if (!e.settled) {
+        unsettledTotal += krw;
+        if (e.payer === "가령") garyeongPaidUnsettled += krw;
+      }
+    });
+    const garyeongShare = unsettledTotal * 0.25;
+    const diff = garyeongShare - garyeongPaidUnsettled;
+    return { dadPaidTotal, garyeongPaidTotal, unsettledTotal, diff };
+  }, [expenses, exchangeRate]);
+
+  const addExpense = () => {
+    if (!expenseForm.title.trim() || !expenseForm.amount) return;
+    setExpenses((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        title: expenseForm.title.trim(),
+        currency: expenseForm.currency,
+        amount: Number(expenseForm.amount),
+        payer: expenseForm.payer,
+        category: expenseForm.category,
+        note: expenseForm.note.trim(),
+        settled: false,
+      },
+    ]);
+    setExpenseForm({ title: "", currency: "JPY", amount: "", payer: "아빠", category: "식비", note: "" });
+  };
+
+  const updateExpenseNote = (id, note) =>
+    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, note } : e)));
+
+  const toggleSettled = (id) =>
+    setExpenses((prev) => prev.map((e) => (e.id === id ? { ...e, settled: !e.settled } : e)));
+
+  const removeExpense = (id) => setExpenses((prev) => prev.filter((e) => e.id !== id));
+
+  /* ---------------- 아카이빙 ---------------- */
+  const archiveSearchRef = useRef(null);
+  const [archiveCategory, setArchiveCategory] = useState("관광지");
+  useEffect(() => {
+    if (!mapsLoaded || !archiveSearchRef.current || !window.google || activeTab !== "archive") return;
+    const ac = new window.google.maps.places.Autocomplete(archiveSearchRef.current, {
+      fields: ["geometry", "name", "place_id", "formatted_address", "photos"],
+      componentRestrictions: { country: "jp" },
+      bounds: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }).getBounds(),
+    });
+    const listener = ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      if (!place.geometry) return;
+      setArchives((prev) => [
+        ...prev,
+        {
+          id: uid(),
+          name: place.name,
+          category: archiveCategory,
+          lat: place.geometry.location.lat(),
+          lng: place.geometry.location.lng(),
+          placeId: place.place_id,
+          address: place.formatted_address,
+          photoUrl: place.photos && place.photos.length > 0 ? place.photos[0].getUrl({ maxWidth: 500, maxHeight: 350 }) : null,
+          rating: 0,
+          comment: "",
+          addedBy: myName,
+          comments: [],
+          aiInfo: null,
+          aiLoading: false,
+        },
+      ]);
+      if (archiveSearchRef.current) archiveSearchRef.current.value = "";
+    });
+    return () => listener.remove();
+  }, [mapsLoaded, activeTab, archiveCategory]);
+
+  const updateArchive = (id, patch) =>
+    setArchives((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+
+  const removeArchive = (id) => setArchives((prev) => prev.filter((a) => a.id !== id));
+
+  const addArchiveComment = (id, text) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setArchives((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? {
+              ...a,
+              comments: [
+                ...(a.comments || []),
+                { id: uid(), author: myName, text: trimmed, at: Date.now() },
+              ],
+            }
+          : a
+      )
+    );
+  };
+
+  const removeArchiveComment = (archiveId, commentId) => {
+    setArchives((prev) =>
+      prev.map((a) =>
+        a.id === archiveId
+          ? { ...a, comments: (a.comments || []).filter((c) => c.id !== commentId) }
+          : a
+      )
+    );
+  };
+
+  /* ---------------- ✨ AI 맛집/명소 추천 ---------------- */
+  const placesServiceRef = useRef(null);
+  const distanceServiceRef = useRef(null);
+  useEffect(() => {
+    if (!mapsLoaded || !window.google) return;
+    placesServiceRef.current = new window.google.maps.places.PlacesService(document.createElement("div"));
+    distanceServiceRef.current = new window.google.maps.DistanceMatrixService();
+  }, [mapsLoaded]);
+
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [recommendError, setRecommendError] = useState("");
+  const [recommendTheme, setRecommendTheme] = useState("");
+
+  // 도쿄 반경으로 위치를 제한해서 실제 장소(좌표/사진/place_id)를 찾아주는 헬퍼
+  const resolvePlace = useCallback((query) => {
+    return new Promise((resolve) => {
+      if (!placesServiceRef.current || !window.google) {
+        resolve(null);
+        return;
+      }
+      placesServiceRef.current.findPlaceFromQuery(
+        {
+          query,
+          fields: ["place_id", "name", "geometry", "formatted_address", "photos"],
+          locationBias: new window.google.maps.Circle({ center: TOKYO_CENTER, radius: TOKYO_BIAS_RADIUS }),
+        },
+        (results, status) => {
+          if (status === window.google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
+            const place = results[0];
+            resolve({
+              name: place.name,
+              lat: place.geometry.location.lat(),
+              lng: place.geometry.location.lng(),
+              placeId: place.place_id,
+              address: place.formatted_address,
+              photoUrl:
+                place.photos && place.photos.length > 0
+                  ? place.photos[0].getUrl({ maxWidth: 500, maxHeight: 350 })
+                  : null,
+            });
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  }, []);
+
+  // 숙소 ↔ 목적지 사이의 "진짜" 도보 시간/거리를 구글맵으로 직접 계산 (AI 추측 아님)
+  const getWalkingInfo = useCallback(
+    (destLat, destLng) => {
+      return new Promise((resolve) => {
+        if (!distanceServiceRef.current || !accommodation || !window.google) {
+          resolve(null);
+          return;
+        }
+        distanceServiceRef.current.getDistanceMatrix(
+          {
+            origins: [{ lat: accommodation.lat, lng: accommodation.lng }],
+            destinations: [{ lat: destLat, lng: destLng }],
+            travelMode: window.google.maps.TravelMode.WALKING,
+          },
+          (response, status) => {
+            const el = response?.rows?.[0]?.elements?.[0];
+            if (status === "OK" && el && el.status === "OK") {
+              resolve({ duration: el.duration.text, distance: el.distance.text });
+            } else {
+              resolve(null);
+            }
+          }
+        );
+      });
+    },
+    [accommodation]
+  );
+
+  // 두 지점 사이 실제 이동시간/거리를 지정된 교통수단으로 구글맵에 직접 계산시키는 헬퍼
+  // (경로 최적화의 "이동 수단 제안" 구간에도 사용 — AI가 시간을 추측하지 않도록)
+  const getLegInfo = useCallback((origin, destination, modeStr) => {
+    return new Promise((resolve) => {
+      if (!distanceServiceRef.current || !window.google) {
+        resolve(null);
+        return;
+      }
+      const modeMap = { 도보: "WALKING", 지하철: "TRANSIT", 전철: "TRANSIT", 버스: "TRANSIT", 택시: "DRIVING", 차: "DRIVING" };
+      let googleMode = "TRANSIT";
+      if (modeStr) {
+        const hit = Object.keys(modeMap).find((k) => modeStr.includes(k));
+        if (hit) googleMode = modeMap[hit];
+      }
+      distanceServiceRef.current.getDistanceMatrix(
+        {
+          origins: [origin],
+          destinations: [destination],
+          travelMode: window.google.maps.TravelMode[googleMode],
+        },
+        (response, status) => {
+          const el = response?.rows?.[0]?.elements?.[0];
+          if (status === "OK" && el && el.status === "OK") {
+            resolve({ duration: el.duration.text, distance: el.distance.text });
+          } else {
+            resolve(null);
+          }
+        }
+      );
+    });
+  }, []);
+
+  const getAiRecommendations = async () => {
+    setRecommendLoading(true);
+    setRecommendError("");
+    setAiRecommendations([]);
+    try {
+      const existingNames = archives.map((a) => a.name).join(", ") || "없음";
+      const theme = recommendTheme.trim();
+      const prompt = `당신은 도쿄 현지 여행 전문가입니다.
+반드시 "도쿄(Tokyo)" 안에 실제로 존재하는 곳만 추천하세요. 도쿄가 아닌 다른 도시(오사카, 요코하마, 삿포로 등)는 절대 포함하지 마세요.
+큰 분류: "${archiveCategory}"
+${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건에 딱 맞는 곳만 추천하세요. 조건과 무관한 곳은 절대 포함하지 마세요.` : "특정 세부 조건은 없으니 다양하게 추천해주세요."}
+이미 보관함에 있어서 제외해야 할 곳: ${existingNames}
+
+부모님을 동반한 가족 여행객에게 어울리는 곳으로 6곳을 추천해주세요.
+★ 중요: "도보 O분", "숙소에서 X분 거리" 같은 구체적인 이동 시간이나 거리는 절대 언급하지 마세요. 당신은 실제 거리를 정확히 계산할 수 없으니, 대신 분위기·메뉴·가족 여행객에게 좋은 이유만 설명하세요.
+아래 JSON 배열 형식으로만, 다른 설명 없이 응답하세요.
+[
+  {"name": "정확한 장소 이름", "area": "위치한 동네/구 (예: 시부야구)", "reason": "이동 시간/거리 언급 없이, 분위기와 가족 여행객에게 좋은 점을 한 줄로"}
+]`;
+      const result = await callGemini(prompt);
+      const list = Array.isArray(result) ? result : [];
+      // Gemini가 준 이름들을 도쿄 반경 안에서 실제 장소로 확인 + 사진/좌표 확보 (엉뚱한 지역 결과 방지)
+      // + 숙소 기준 진짜 도보 시간은 구글맵 Distance Matrix로 직접 계산
+      const resolved = await Promise.all(
+        list.map(async (rec) => {
+          const place = await resolvePlace(`도쿄 ${rec.area || ""} ${rec.name}`);
+          const walking = place ? await getWalkingInfo(place.lat, place.lng) : null;
+          return { ...rec, ...(place || {}), resolved: !!place, walking };
+        })
+      );
+      setAiRecommendations(resolved);
+    } catch (err) {
+      setRecommendError(err.message || "추천을 가져오지 못했어요.");
+    } finally {
+      setRecommendLoading(false);
+    }
+  };
+
+  const addRecommendationToArchive = (rec) => {
+    if (!rec.resolved || !rec.placeId) {
+      alert(`"${rec.name}"을(를) 구글맵에서 정확히 찾지 못했어요. 검색창에서 직접 검색해서 추가해주세요.`);
+      return;
+    }
+    setArchives((prev) => [
+      ...prev,
+      {
+        id: uid(),
+        name: rec.name,
+        category: archiveCategory,
+        lat: rec.lat,
+        lng: rec.lng,
+        placeId: rec.placeId,
+        address: rec.address,
+        photoUrl: rec.photoUrl || null,
+        rating: 0,
+        comment: rec.reason || "",
+        addedBy: myName,
+        comments: [],
+        aiInfo: null,
+        aiLoading: false,
+      },
+    ]);
+    setAiRecommendations((prev) => prev.filter((r) => r.name !== rec.name));
+  };
+
+  const fillAiInfo = async (item) => {
+    updateArchive(item.id, { aiLoading: true });
+    try {
+      const prompt = `장소명 "${item.name}" (도쿄 소재, 분류: ${item.category})에 대한 여행 정보를 알려주세요.
+아래 JSON 형식으로만, 다른 설명 없이 응답하세요.
+{
+  "menu": "대표 추천 메뉴 또는 볼거리/체험 2~4개 (콤마로 구분)",
+  "budget": "1인당 대략적인 예산 (엔화 범위, 예: 1500~2500엔)",
+  "waitingTip": "웨이팅 관련 팁 (없으면 '특별한 웨이팅 없음')",
+  "reservation": "예약 필수 여부와 관련 팁 (예: 필수 / 권장 / 불필요)"
+}`;
+      const info = await callGemini(prompt);
+      updateArchive(item.id, { aiInfo: info, aiLoading: false });
+    } catch (err) {
+      updateArchive(item.id, { aiLoading: false });
+      alert("AI 정보 채우기 실패: " + (err.message || "알 수 없는 오류"));
+    }
+  };
+
+  const addArchiveToDay = (item, day) => {
+    setDays((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        locations: [
+          ...prev[day].locations,
+          {
+            id: uid(),
+            name: item.name,
+            lat: item.lat,
+            lng: item.lng,
+            placeId: item.placeId,
+            mapUrl: `https://www.google.com/maps/place/?q=place_id:${item.placeId}`,
+          },
+        ],
+        segments: [],
+      },
+    }));
+    setAddToDayModal(null);
+    setActiveTab("schedule");
+    setCurrentDay(day);
+  };
+
+  /* ---------------- 탭 정의 ---------------- */
+  const tabs = [
+    { id: "schedule", label: "일정 & 지도", icon: MapPin },
+    { id: "expense", label: "경비 정산", icon: Wallet },
+    { id: "archive", label: "아카이빙", icon: Bookmark },
+  ];
+
+  const currentRoute = buildRoute(currentDay);
+
+  const handlePinSubmit = (e) => {
+    e.preventDefault();
+    if (pinInput === APP_PIN) {
+      setUnlocked(true);
+      setPinError(false);
+    } else {
+      setPinError(true);
+      setPinInput("");
+    }
+  };
+
+  if (!unlocked) {
+    return (
+      <div className="min-h-screen w-full bg-stone-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-br from-indigo-950 via-indigo-500/50 to-transparent opacity-80 blur-3xl" />
+        <GlassCard className="p-8 w-full max-w-xs flex flex-col items-center gap-4 text-center relative">
+          <div className="w-14 h-14 rounded-2xl bg-stone-900/90 flex items-center justify-center shadow-md shadow-stone-200">
+            <Plane className="text-white" size={26} />
+          </div>
+          <div>
+            <p className="font-bold text-stone-800">도쿄 가족여행 플래너</p>
+            <p className="text-xs text-stone-400 mt-1">PIN 번호를 입력해주세요</p>
+          </div>
+          <form onSubmit={handlePinSubmit} className="w-full flex flex-col gap-3">
+            <input
+              type="password"
+              inputMode="numeric"
+              autoFocus
+              value={pinInput}
+              onChange={(e) => { setPinInput(e.target.value); setPinError(false); }}
+              className={`w-full text-center tracking-[0.5em] text-lg px-4 py-3 rounded-2xl bg-stone-50/70 border outline-none ${
+                pinError ? "border-rose-300 focus:ring-2 focus:ring-rose-200" : "border-stone-100 focus:ring-2 focus:ring-stone-300"
+              }`}
+              placeholder="••••"
+            />
+            {pinError && (
+              <p className="text-xs text-rose-500 flex items-center justify-center gap-1">
+                <AlertCircle size={12} /> PIN이 일치하지 않아요
+              </p>
+            )}
+            <button
+              type="submit"
+              className="w-full px-4 py-3 rounded-2xl bg-stone-900 text-white font-semibold text-sm shadow-md shadow-stone-200"
+            >
+              입장하기
+            </button>
+          </form>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  if (!nameLoaded) {
+    return (
+      <div className="min-h-screen w-full bg-stone-50 flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-stone-300" />
+      </div>
+    );
+  }
+
+  if (!myName) {
+    return (
+      <div className="min-h-screen w-full bg-stone-50 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-gradient-to-br from-indigo-950 via-indigo-500/50 to-transparent opacity-80 blur-3xl" />
+        <GlassCard className="p-8 w-full max-w-xs flex flex-col items-center gap-4 text-center relative">
+          <div className="w-14 h-14 rounded-2xl bg-stone-900/90 flex items-center justify-center shadow-md shadow-stone-200">
+            <Users className="text-white" size={24} />
+          </div>
+          <div>
+            <p className="font-bold text-stone-800">누구세요?</p>
+            <p className="text-xs text-stone-400 mt-1">이 기기에서 계속 이 이름으로 표시돼요 (나중에 바꿀 수 있어요)</p>
+          </div>
+          <div className="w-full grid grid-cols-2 gap-2">
+            {FAMILY_MEMBERS.map((name) => (
+              <button
+                key={name}
+                onClick={() => chooseMyName(name)}
+                className="px-4 py-3 rounded-2xl bg-stone-100 text-stone-700 font-medium text-sm hover:bg-stone-900 hover:text-white transition-colors"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </GlassCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen w-full bg-stone-50 text-stone-700 relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[380px] bg-gradient-to-br from-indigo-950 via-indigo-500/40 to-transparent opacity-70 blur-3xl" />
+      <div className="flex flex-col md:flex-row min-h-screen relative">
+        {/* ---------- PC 사이드바 ---------- */}
+        <aside className="hidden md:flex md:flex-col w-64 shrink-0 p-6 gap-6 sticky top-0 h-screen bg-stone-50 relative z-10">
+          <div className="flex items-center gap-2 px-2">
+            <div className="w-10 h-10 rounded-2xl bg-stone-900/90 flex items-center justify-center shadow-md shadow-stone-200">
+              <Plane className="text-white" size={20} />
+            </div>
+            <div>
+              <p className="font-bold text-stone-800 leading-tight">도쿄 가족여행</p>
+              <p className="text-xs text-stone-400">3박 4일 플래너</p>
+            </div>
+          </div>
+          <nav className="flex flex-col gap-2">
+            {tabs.map((t) => {
+              const Icon = t.icon;
+              const active = activeTab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setActiveTab(t.id)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all ${
+                    active
+                      ? "bg-stone-900 text-white shadow-md shadow-stone-200"
+                      : "text-stone-500 hover:bg-stone-50"
+                  }`}
+                >
+                  <Icon size={18} />
+                  {t.label}
+                </button>
+              );
+            })}
+          </nav>
+          <GlassCard className="p-3 flex items-center justify-between gap-2 text-xs">
+            <span className="text-stone-500">
+              나: <span className="font-semibold text-stone-800">{myName}</span>
+            </span>
+            <button onClick={() => setMyName(null)} className="text-stone-400 hover:text-stone-700 underline">
+              변경
+            </button>
+          </GlassCard>
+          <p className="text-[11px] text-stone-400 px-1 -mt-1">
+            {HAS_SHARED_STORAGE ? "🟢 가족과 실시간 공유 중" : "⚪ 이 기기에만 저장됨 (공유 안 됨)"}
+          </p>
+          {syncError && (
+            <p className="text-[11px] text-rose-500 flex items-center gap-1 px-1">
+              <AlertCircle size={11} /> {syncError}
+            </p>
+          )}
+          <GlassCard className="mt-auto p-4 text-xs text-stone-500 leading-relaxed">
+            <p className="font-semibold text-stone-600 mb-1">💡 Tip</p>
+            숙소를 먼저 등록하면 모든 일정의 출발/복귀 지점으로 자동 반영돼요.
+          </GlassCard>
+        </aside>
+
+        {/* ---------- 메인 컨텐츠 ---------- */}
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-6xl mx-auto w-full">
+          {/* 상단 고정 영역: 공항 & 숙소 */}
+          <GlassCard className="p-5 mb-6 sticky top-2 z-20">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex items-center gap-3 flex-1 bg-stone-50 rounded-2xl px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-stone-200 flex items-center justify-center shrink-0">
+                  <Plane size={16} className="text-stone-700" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-stone-400">출발/도착 공항</p>
+                  <p className="text-sm font-semibold text-stone-700 truncate">{AIRPORT.name}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-1 bg-stone-50/70 rounded-2xl px-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-stone-200/80 flex items-center justify-center shrink-0">
+                  <Home size={16} className="text-stone-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-stone-400">고정 숙소 (모든 일정의 허브)</p>
+                  <input
+                    ref={accInputRef}
+                    defaultValue={accInputValue}
+                    placeholder="숙소 이름을 검색하세요 (예: 시부야 스트림 엑셀 호텔)"
+                    className="w-full bg-transparent text-sm font-semibold text-stone-700 placeholder:font-normal placeholder:text-stone-400 outline-none"
+                  />
+                </div>
+                {accommodation && <Check size={16} className="text-stone-900 shrink-0" />}
+              </div>
+            </div>
+            {!mapsLoaded && !mapsError && (
+              <p className="mt-3 text-xs text-stone-400 flex items-center gap-1">
+                <Loader2 size={12} className="animate-spin" /> 지도 서비스를 불러오는 중이에요...
+              </p>
+            )}
+            {mapsError === "no-key" && (
+              <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
+                <AlertCircle size={12} /> Google Maps API 키를 코드 상단에 입력해야 지도/검색 기능이 동작해요.
+              </p>
+            )}
+            {mapsError === "load-failed" && (
+              <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
+                <AlertCircle size={12} /> 키는 입력돼 있는데 지도를 불러오지 못했어요. Google Cloud Console에서
+                결제 계정 연결 / API 활성화 / 리퍼러 제한 설정을 확인해주세요.
+              </p>
+            )}
+          </GlassCard>
+
+          {/* ================= 일정 & 지도 탭 ================= */}
+          <div className={activeTab === "schedule" ? "flex flex-col gap-6" : "hidden"}>
+            {/* Day 탭 */}
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {[1, 2, 3, 4].map((d) => {
+                const meta = DAY_META[d];
+                const Icon = meta.icon;
+                const active = currentDay === d;
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setCurrentDay(d)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium whitespace-nowrap transition-all ${
+                      active
+                        ? "bg-stone-900 text-white shadow-md shadow-stone-200"
+                        : "bg-white/60 text-stone-500 border border-white/60"
+                    }`}
+                  >
+                    <Icon size={14} />
+                    {meta.label}
+                    <span className={`text-xs ${active ? "text-stone-50" : "text-stone-400"}`}>
+                      {meta.desc}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 지도 */}
+            <GlassCard className="overflow-hidden p-0">
+              <div ref={mapDivRef} className="w-full h-72 md:h-96 bg-stone-50" />
+            </GlassCard>
+
+            {/* Day 메모 */}
+            <GlassCard className="p-5 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-stone-700 font-semibold text-sm">
+                <Bookmark size={15} className="text-stone-400" /> {DAY_META[currentDay].label} 메모
+              </div>
+              <textarea
+                value={days[currentDay].memo}
+                onChange={(e) => updateDayMemo(currentDay, e.target.value)}
+                placeholder="이 날의 준비물, 예약 시간, 주의사항 등을 자유롭게 적어두세요 (예: 우에노 동물원 예약 오전 10시, 우산 챙기기)"
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-sm outline-none resize-none"
+              />
+            </GlassCard>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* 장소 검색 & 목록 */}
+              <GlassCard className="p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-2 text-stone-700 font-semibold">
+                  <Search size={16} /> 장소 검색해서 추가하기
+                </div>
+                <input
+                  ref={daySearchRef}
+                  placeholder="가고 싶은 장소를 검색하세요"
+                  className="w-full px-4 py-2.5 rounded-2xl bg-stone-50/70 border border-stone-100 text-sm outline-none focus:ring-2 focus:ring-stone-300"
+                />
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-stone-400 font-medium">
+                    {DAY_META[currentDay].label} 방문 순서 (번호는 지도 마커와 동일)
+                  </p>
+                  {currentRoute.length === 0 && (
+                    <p className="text-sm text-stone-400 py-4 text-center">
+                      아직 등록된 장소가 없어요.
+                    </p>
+                  )}
+                  {currentRoute.map((stop, idx) => {
+                    const isHub = stop.type === "airport" || stop.type === "hotel";
+                    const middleIdx = isHub
+                      ? -1
+                      : days[currentDay].locations.findIndex((l) => l.id === stop.id);
+                    const isFirstMiddle = middleIdx === 0;
+                    const isLastMiddle = middleIdx === days[currentDay].locations.length - 1;
+                    return (
+                      <div
+                        key={stop.id + idx}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl ${
+                          isHub ? "bg-stone-100" : "bg-stone-50"
+                        }`}
+                      >
+                        <span
+                          className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                            isHub ? "bg-stone-900" : "bg-stone-400"
+                          }`}
+                        >
+                          {idx + 1}
+                        </span>
+                        <a
+                          href={placeMapUrl(stop)}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-stone-700 flex-1 truncate hover:text-stone-800 hover:underline"
+                        >
+                          {stop.name}
+                        </a>
+                        {isHub ? (
+                          <span className="text-[10px] text-stone-400 shrink-0">고정</span>
+                        ) : (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => moveLocation(currentDay, stop.id, -1)}
+                              disabled={isFirstMiddle}
+                              className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                            >
+                              <ChevronUp size={16} />
+                            </button>
+                            <button
+                              onClick={() => moveLocation(currentDay, stop.id, 1)}
+                              disabled={isLastMiddle}
+                              className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                            >
+                              <ChevronDown size={16} />
+                            </button>
+                            <button
+                              onClick={() => removeLocation(currentDay, stop.id)}
+                              className="text-stone-300 hover:text-rose-400 ml-1"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </GlassCard>
+
+              {/* AI 경로 최적화 */}
+              <GlassCard className="p-5 flex flex-col gap-4">
+                <div className="flex items-center gap-2 text-stone-700 font-semibold">
+                  <Sparkles size={16} className="text-indigo-600" /> AI 경로 최적화
+                </div>
+                <p className="text-xs text-stone-400 leading-relaxed">
+                  공항/숙소 고정 지점은 유지한 채, 부모님 체력과 대중교통 동선을 고려해
+                  Gemini가 방문 순서와 이동수단을 제안해줘요.
+                </p>
+                <button
+                  onClick={optimizeRoute}
+                  disabled={optimizing}
+                  className="flex items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-950 via-indigo-800 to-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-200 disabled:opacity-60"
+                >
+                  {optimizing ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> 최적화 중...
+                    </>
+                  ) : (
+                    <>
+                      <RouteIcon size={16} /> AI 경로 최적화 시작
+                    </>
+                  )}
+                </button>
+                {optimizeError && (
+                  <p className="text-xs text-rose-500 flex items-center gap-1">
+                    <AlertCircle size={12} /> {optimizeError}
+                  </p>
+                )}
+                {days[currentDay].segments?.length > 0 && (
+                  <div className="flex flex-col gap-2 mt-1">
+                    <p className="text-xs text-stone-400 font-medium">이동 수단 · 구글맵 실제 계산</p>
+                    {days[currentDay].segments.map((seg, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center gap-2 text-xs bg-stone-50 rounded-xl px-3 py-2"
+                      >
+                        <Clock size={12} className="text-stone-400 shrink-0" />
+                        <span className="text-stone-600 truncate">
+                          {seg.from} → {seg.to}
+                        </span>
+                        <span className="ml-auto text-stone-700 font-medium whitespace-nowrap">
+                          {seg.mode} · {seg.duration}
+                          {seg.distance ? ` (${seg.distance})` : ""}
+                          {seg.estimated ? " ⚠️" : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </GlassCard>
+            </div>
+          </div>
+
+          {/* ================= 경비 정산 탭 ================= */}
+          <div className={activeTab === "expense" ? "flex flex-col gap-6" : "hidden"}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <StatBadge icon={DollarSign} label="아빠 실제 지출 (총)" value={formatKRW(settlement.dadPaidTotal)} tone="peach" />
+              <StatBadge icon={DollarSign} label="가령 실제 지출 (총)" value={formatKRW(settlement.garyeongPaidTotal)} tone="pink" />
+              <GlassCard className="p-4 flex items-center gap-3">
+                <Users size={18} className="text-stone-800 shrink-0" />
+                <div className="text-sm leading-tight">
+                  <p className="text-xs text-stone-400">미정산 기준 정산 결과</p>
+                  <p className="font-semibold text-stone-700">
+                    {settlement.diff === 0
+                      ? "정산할 금액이 없어요"
+                      : settlement.diff > 0
+                      ? `가령 → 아빠에게 ${formatKRW(settlement.diff)}`
+                      : `아빠 → 가령에게 ${formatKRW(-settlement.diff)}`}
+                  </p>
+                </div>
+              </GlassCard>
+            </div>
+
+            <GlassCard className="p-5 flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-3 justify-between">
+                <p className="font-semibold text-stone-700">환율 설정</p>
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-stone-400">100엔 =</span>
+                  <input
+                    type="number"
+                    value={exchangeRate}
+                    onChange={(e) => setExchangeRate(Number(e.target.value) || 0)}
+                    className="w-24 px-3 py-1.5 rounded-xl bg-stone-50/70 border border-stone-100 outline-none text-right"
+                  />
+                  <span className="text-stone-400">원</span>
+                </div>
+              </div>
+              <p className="text-xs text-stone-400">
+                정산 룰 A · 가족 공통 경비는 아빠 75% (아빠/엄마/오빠 몫) · 가령 25% 부담
+              </p>
+            </GlassCard>
+
+            <GlassCard className="p-5 flex flex-col gap-4">
+              <p className="font-semibold text-stone-700">지출 추가</p>
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <input
+                  placeholder="항목명"
+                  value={expenseForm.title}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, title: e.target.value }))}
+                  className="col-span-2 px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                />
+                <select
+                  value={expenseForm.currency}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, currency: e.target.value }))}
+                  className="px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                >
+                  <option value="JPY">JPY (엔)</option>
+                  <option value="KRW">KRW (원)</option>
+                </select>
+                <input
+                  type="number"
+                  placeholder="금액"
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                />
+                <select
+                  value={expenseForm.payer}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, payer: e.target.value }))}
+                  className="px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                >
+                  {PAYERS.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <select
+                  value={expenseForm.category}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, category: e.target.value }))}
+                  className="px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                >
+                  {CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <input
+                  placeholder="비고 (선택)"
+                  value={expenseForm.note}
+                  onChange={(e) => setExpenseForm((f) => ({ ...f, note: e.target.value }))}
+                  className="col-span-2 px-3 py-2.5 rounded-xl bg-stone-50/70 border border-stone-100 text-sm outline-none"
+                />
+              </div>
+              <button
+                onClick={addExpense}
+                className="self-start flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold shadow-md shadow-stone-200"
+              >
+                <Plus size={16} /> 지출 추가
+              </button>
+            </GlassCard>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {expenses.length === 0 && (
+                <p className="text-sm text-stone-400 col-span-full text-center py-6">
+                  아직 등록된 지출이 없어요.
+                </p>
+              )}
+              {expenses.map((e) => (
+                <GlassCard key={e.id} className="p-4 flex flex-col gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-stone-700 truncate">{e.title}</p>
+                      <p className="text-xs text-stone-400">{e.category} · {e.payer} 결제</p>
+                    </div>
+                    <button onClick={() => removeExpense(e.id)} className="text-stone-300 hover:text-rose-400 shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                  <p className="text-lg font-bold text-stone-800">
+                    {e.currency === "JPY" ? `¥${e.amount.toLocaleString()}` : `₩${e.amount.toLocaleString()}`}
+                  </p>
+                  <p className="text-xs text-stone-400">≈ {formatKRW(toKRW(e.amount, e.currency, exchangeRate))}</p>
+                  <input
+                    value={e.note || ""}
+                    onChange={(ev) => updateExpenseNote(e.id, ev.target.value)}
+                    placeholder="비고 (예: 3인분, 다음날 환불 예정)"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-stone-50 border border-stone-100 text-xs text-stone-500 outline-none"
+                  />
+                  <label className="flex items-center gap-2 text-xs text-stone-500 mt-1">
+                    <input type="checkbox" checked={e.settled} onChange={() => toggleSettled(e.id)} className="accent-stone-900" />
+                    정산 완료
+                  </label>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+
+          {/* ================= 아카이빙 탭 ================= */}
+          <div className={activeTab === "archive" ? "flex flex-col gap-6" : "hidden"}>
+            <GlassCard className="p-5 flex flex-col gap-3">
+              <div className="flex items-center gap-2 text-stone-700 font-semibold">
+                <Search size={16} /> 맛집 / 명소 검색해서 보관하기
+              </div>
+              <div className="flex flex-col md:flex-row gap-3">
+                <input
+                  ref={archiveSearchRef}
+                  placeholder="장소를 검색하세요"
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50/70 border border-stone-100 text-sm outline-none focus:ring-2 focus:ring-stone-300"
+                />
+                <div className="flex gap-2">
+                  {["관광지", "맛집"].map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => setArchiveCategory(c)}
+                      className={`px-4 py-2.5 rounded-2xl text-sm font-medium flex items-center gap-1.5 ${
+                        archiveCategory === c
+                          ? "bg-stone-900 text-white"
+                          : "bg-white/60 text-stone-500 border border-white/60"
+                      }`}
+                    >
+                      {c === "맛집" ? <Utensils size={14} /> : <Camera size={14} />}
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </GlassCard>
+
+            <GlassCard className="p-5 flex flex-col gap-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-stone-700 font-semibold">
+                  <Sparkles size={16} className="text-indigo-600" /> AI 도쿄 {archiveCategory} 추천받기
+                </div>
+                <button
+                  onClick={getAiRecommendations}
+                  disabled={recommendLoading}
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-indigo-800 to-indigo-600 text-white font-semibold text-sm shadow-md shadow-indigo-200 disabled:opacity-60"
+                >
+                  {recommendLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> 추천 받는 중...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={16} /> {archiveCategory} 추천받기
+                    </>
+                  )}
+                </button>
+              </div>
+              <input
+                value={recommendTheme}
+                onChange={(e) => setRecommendTheme(e.target.value)}
+                placeholder="원하는 조건을 적어보세요 (예: 라멘 맛집, 분위기 좋은 카페, 노을 예쁜 전망대) — 비워두면 다양하게 추천해요"
+                className="w-full px-4 py-2.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+              />
+              <p className="text-xs text-stone-400 -mt-2">
+                Gemini가 도쿄 안에서만, 위 조건에 맞는 곳만 골라 추천해줘요. 이미 보관함에 있는 곳은 자동으로 제외돼요.
+              </p>
+              {recommendError && (
+                <p className="text-xs text-rose-500 flex items-center gap-1">
+                  <AlertCircle size={12} /> {recommendError}
+                </p>
+              )}
+              {aiRecommendations.length > 0 && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {aiRecommendations.map((rec, i) => (
+                    <div key={i} className="flex flex-col gap-1.5 bg-stone-50 rounded-2xl overflow-hidden">
+                      {rec.photoUrl ? (
+                        <img src={rec.photoUrl} alt={rec.name} className="w-full h-32 object-cover" />
+                      ) : (
+                        <div className="w-full h-20 bg-stone-100 flex items-center justify-center text-stone-300">
+                          {archiveCategory === "맛집" ? <Utensils size={20} /> : <Camera size={20} />}
+                        </div>
+                      )}
+                      <div className="flex flex-col gap-1.5 px-4 pb-3 pt-1">
+                        {rec.placeId ? (
+                          <a
+                            href={placeMapUrl(rec)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-semibold text-stone-700 text-sm hover:text-stone-800 hover:underline"
+                          >
+                            {rec.name}
+                          </a>
+                        ) : (
+                          <p className="font-semibold text-stone-700 text-sm">{rec.name}</p>
+                        )}
+                        <p className="text-[11px] text-stone-400">{rec.area}</p>
+                        {rec.walking ? (
+                          <span className="self-start flex items-center gap-1 text-[11px] font-medium text-stone-700 bg-stone-100/80 rounded-full px-2 py-0.5">
+                            <Clock size={11} /> 숙소에서 실제 도보 {rec.walking.duration} ({rec.walking.distance})
+                          </span>
+                        ) : rec.resolved && !accommodation ? (
+                          <span className="text-[11px] text-stone-400">숙소를 등록하면 실제 도보 시간이 표시돼요</span>
+                        ) : null}
+                        <p className="text-xs text-stone-500 leading-relaxed">{rec.reason}</p>
+                        {!rec.resolved && (
+                          <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                            <AlertCircle size={11} /> 구글맵에서 정확히 못 찾았어요
+                          </p>
+                        )}
+                        <button
+                          onClick={() => addRecommendationToArchive(rec)}
+                          disabled={!rec.resolved}
+                          className="self-start mt-1 flex items-center gap-1 px-3 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-medium disabled:opacity-40"
+                        >
+                          <Plus size={12} /> 보관함에 추가
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {archives.length === 0 && (
+                <p className="text-sm text-stone-400 col-span-full text-center py-6">
+                  보관함이 비어있어요. 위 검색창에서 장소를 추가해보세요.
+                </p>
+              )}
+              {archives.map((a) => (
+                <GlassCard key={a.id} className="overflow-hidden flex flex-col gap-0 p-0">
+                  {a.photoUrl ? (
+                    <img src={a.photoUrl} alt={a.name} className="w-full h-36 object-cover" />
+                  ) : (
+                    <div className="w-full h-20 bg-stone-50/80 flex items-center justify-center text-stone-200">
+                      {a.category === "맛집" ? <Utensils size={22} /> : <Camera size={22} />}
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-3 p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span
+                        className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full mb-1 ${
+                          a.category === "맛집" ? "bg-stone-100 text-stone-700" : "bg-stone-100 text-stone-700"
+                        }`}
+                      >
+                        {a.category === "맛집" ? <Utensils size={10} /> : <Camera size={10} />}
+                        {a.category}
+                      </span>
+                      <a
+                        href={placeMapUrl(a)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block font-semibold text-stone-700 truncate hover:text-stone-800 hover:underline"
+                      >
+                        {a.name}
+                      </a>
+                      <p className="text-xs text-stone-400 truncate">{a.address}</p>
+                      {a.addedBy && (
+                        <span className="inline-block mt-1 text-[10px] text-stone-400">
+                          {a.addedBy}이(가) 추가함
+                        </span>
+                      )}
+                    </div>
+                    <button onClick={() => removeArchive(a.id)} className="text-stone-300 hover:text-rose-400 shrink-0">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+
+                  <Stars value={a.rating} onChange={(n) => updateArchive(a.id, { rating: n })} />
+
+                  {a.comment && <p className="text-xs text-stone-500 leading-relaxed">{a.comment}</p>}
+
+                  <ArchiveComments
+                    comments={a.comments}
+                    myName={myName}
+                    onAdd={(text) => addArchiveComment(a.id, text)}
+                    onRemove={(commentId) => removeArchiveComment(a.id, commentId)}
+                  />
+
+                  {a.aiInfo ? (
+                    <div className="bg-indigo-50/70 rounded-xl px-3 py-2 flex flex-col gap-1 text-xs text-stone-600">
+                      <p><span className="font-semibold">추천:</span> {a.aiInfo.menu}</p>
+                      <p><span className="font-semibold">예산:</span> {a.aiInfo.budget}</p>
+                      <p><span className="font-semibold">웨이팅:</span> {a.aiInfo.waitingTip}</p>
+                      <p><span className="font-semibold">예약:</span> {a.aiInfo.reservation}</p>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => fillAiInfo(a)}
+                      disabled={a.aiLoading}
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-medium disabled:opacity-60"
+                    >
+                      {a.aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                      AI 정보 채우기
+                    </button>
+                  )}
+
+                  <div className="flex gap-2">
+                    <a
+                      href={directionsUrl(a.lat, a.lng)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100/80 text-stone-700 text-xs font-medium"
+                    >
+                      <Navigation size={12} /> 길찾기
+                    </a>
+                    <button
+                      onClick={() => setAddToDayModal(a)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-stone-100 text-stone-600 text-xs font-medium"
+                    >
+                      <Plus size={12} /> 일정에 추가
+                    </button>
+                  </div>
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* ---------- 모바일 하단 탭 바 ---------- */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-xl border-t border-white/60 flex justify-around py-2">
+        {tabs.map((t) => {
+          const Icon = t.icon;
+          const active = activeTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-2xl text-[11px] font-medium ${
+                active ? "text-stone-800" : "text-stone-400"
+              }`}
+            >
+              <Icon size={18} />
+              {t.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ---------- 일정에 추가 모달 ---------- */}
+      {addToDayModal && (
+        <div className="fixed inset-0 z-40 bg-stone-900/30 backdrop-blur-sm flex items-center justify-center p-4">
+          <GlassCard className="p-6 w-full max-w-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-stone-700">
+                "{addToDayModal.name}" 어느 날에 추가할까요?
+              </p>
+              <button onClick={() => setAddToDayModal(null)} className="text-stone-400">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {[1, 2, 3, 4].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => addArchiveToDay(addToDayModal, d)}
+                  className="px-4 py-3 rounded-2xl bg-stone-50 text-stone-700 font-medium text-sm hover:bg-stone-100"
+                >
+                  {DAY_META[d].label}
+                </button>
+              ))}
+            </div>
+          </GlassCard>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+const rootEl = document.getElementById("root");
+ReactDOM.createRoot(rootEl).render(<TokyoTripPlanner />);
+
+</script>
+</body>
+</html>
