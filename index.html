@@ -123,7 +123,7 @@ const FAMILY_MEMBERS = ["아빠", "엄마", "오빠", "가령"];
 const TRIP_STORAGE_KEY = "tokyo-trip-shared-data";
 
 const GLASS =
-  "bg-white/72 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
+  "bg-white/80 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -159,13 +159,17 @@ function placeMapUrl(item) {
 }
 
 // 구글 플레이스 types(예: restaurant, cafe...)로 맛집/관광지 자동 분류
+// 라멘집/스시집처럼 "OO_restaurant" 형태의 세부 타입도 있어서, 포함 여부로 넓게 판단
 const FOOD_PLACE_TYPES = [
-  "restaurant", "cafe", "bakery", "bar", "food",
-  "meal_takeaway", "meal_delivery", "night_club",
+  "cafe", "bakery", "bar", "food", "meal_takeaway", "meal_delivery",
+  "night_club", "coffee_shop", "ice_cream_shop", "dessert_shop",
 ];
 function inferCategory(placeTypes) {
-  if (placeTypes && placeTypes.some((t) => FOOD_PLACE_TYPES.includes(t))) return "맛집";
-  return "관광지";
+  if (!placeTypes) return "관광지";
+  const isFood = placeTypes.some(
+    (t) => t.includes("restaurant") || FOOD_PLACE_TYPES.includes(t)
+  );
+  return isFood ? "맛집" : "관광지";
 }
 
 function googleModeLabel(googleMode) {
