@@ -584,6 +584,16 @@ function TokyoTripPlanner() {
     setDays((prev) => ({ ...prev, [day]: { ...prev[day], memo } }));
   };
 
+  const updateLocationNote = (day, id, note) => {
+    setDays((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        locations: prev[day].locations.map((l) => (l.id === id ? { ...l, note } : l)),
+      },
+    }));
+  };
+
   /* ---------------- 지도 렌더링 ---------------- */
   const mapDivRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -1350,55 +1360,77 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                       : days[currentDay].locations.findIndex((l) => l.id === stop.id);
                     const isFirstMiddle = middleIdx === 0;
                     const isLastMiddle = middleIdx === days[currentDay].locations.length - 1;
+                    const segment = days[currentDay].segments && days[currentDay].segments[idx];
                     return (
-                      <div
-                        key={stop.id + idx}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl ${
-                          isHub ? "bg-stone-100" : "bg-stone-50"
-                        }`}
-                      >
-                        <span
-                          className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-                            isHub ? "bg-stone-900" : "bg-stone-400"
+                      <React.Fragment key={stop.id + idx}>
+                        <div
+                          className={`flex flex-col gap-1.5 px-3 py-2.5 rounded-2xl ${
+                            isHub ? "bg-stone-100" : "bg-stone-50"
                           }`}
                         >
-                          {idx + 1}
-                        </span>
-                        <a
-                          href={placeMapUrl(stop)}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-stone-700 flex-1 truncate hover:text-stone-800 hover:underline"
-                        >
-                          {stop.name}
-                        </a>
-                        {isHub ? (
-                          <span className="text-[10px] text-stone-400 shrink-0">고정</span>
-                        ) : (
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => moveLocation(currentDay, stop.id, -1)}
-                              disabled={isFirstMiddle}
-                              className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                isHub ? "bg-stone-900" : "bg-stone-400"
+                              }`}
                             >
-                              <ChevronUp size={16} />
-                            </button>
-                            <button
-                              onClick={() => moveLocation(currentDay, stop.id, 1)}
-                              disabled={isLastMiddle}
-                              className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                              {idx + 1}
+                            </span>
+                            <a
+                              href={placeMapUrl(stop)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-stone-700 flex-1 truncate hover:text-stone-800 hover:underline"
                             >
-                              <ChevronDown size={16} />
-                            </button>
-                            <button
-                              onClick={() => removeLocation(currentDay, stop.id)}
-                              className="text-stone-300 hover:text-rose-400 ml-1"
-                            >
-                              <X size={14} />
-                            </button>
+                              {stop.name}
+                            </a>
+                            {isHub ? (
+                              <span className="text-[10px] text-stone-400 shrink-0">고정</span>
+                            ) : (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => moveLocation(currentDay, stop.id, -1)}
+                                  disabled={isFirstMiddle}
+                                  className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                                >
+                                  <ChevronUp size={16} />
+                                </button>
+                                <button
+                                  onClick={() => moveLocation(currentDay, stop.id, 1)}
+                                  disabled={isLastMiddle}
+                                  className="text-stone-400 hover:text-stone-900 disabled:opacity-25 disabled:hover:text-stone-400"
+                                >
+                                  <ChevronDown size={16} />
+                                </button>
+                                <button
+                                  onClick={() => removeLocation(currentDay, stop.id)}
+                                  className="text-stone-300 hover:text-rose-400 ml-1"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          {!isHub && (
+                            <input
+                              value={days[currentDay].locations[middleIdx]?.note || ""}
+                              onChange={(e) => updateLocationNote(currentDay, stop.id, e.target.value)}
+                              placeholder="메모 (예: 예약 11시, 현금만 가능)"
+                              className="ml-9 px-2.5 py-1.5 rounded-lg bg-white border border-stone-100 text-xs text-stone-500 outline-none"
+                            />
+                          )}
+                        </div>
+                        {segment && idx < currentRoute.length - 1 && (
+                          <div className="flex items-center gap-1.5 pl-9 text-[11px] text-stone-400">
+                            <Clock size={11} className="shrink-0" />
+                            <span>
+                              {segment.mode} · {segment.duration}
+                              {segment.distance ? ` (${segment.distance})` : ""}
+                              {segment.estimated ? " ⚠️" : ""}
+                            </span>
                           </div>
                         )}
-                      </div>
+                      </React.Fragment>
                     );
                   })}
                 </div>
@@ -1434,25 +1466,9 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                   </p>
                 )}
                 {days[currentDay].segments?.length > 0 && (
-                  <div className="flex flex-col gap-2 mt-1">
-                    <p className="text-xs text-stone-400 font-medium">이동 수단 · 구글맵 실제 계산</p>
-                    {days[currentDay].segments.map((seg, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center gap-2 text-xs bg-stone-50 rounded-xl px-3 py-2"
-                      >
-                        <Clock size={12} className="text-stone-400 shrink-0" />
-                        <span className="text-stone-600 truncate">
-                          {seg.from} → {seg.to}
-                        </span>
-                        <span className="ml-auto text-stone-700 font-medium whitespace-nowrap">
-                          {seg.mode} · {seg.duration}
-                          {seg.distance ? ` (${seg.distance})` : ""}
-                          {seg.estimated ? " ⚠️" : ""}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-xs text-stone-400 flex items-center gap-1">
+                    <Check size={12} className="text-stone-700" /> 완료! 왼쪽 방문 순서 목록에서 구간별 이동수단·시간을 확인하세요.
+                  </p>
                 )}
               </GlassCard>
             </div>
