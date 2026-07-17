@@ -146,24 +146,12 @@ function placeMapUrl(item) {
   return null;
 }
 
-// 두 좌표 사이 직선거리(km) — API 호출 없이, 지하철 실패 시 도보/택시 중 뭘로 대체할지 판단하는 용도
-function haversineKm(a, b) {
-  const R = 6371;
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
-  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const lat1 = (a.lat * Math.PI) / 180;
-  const lat2 = (b.lat * Math.PI) / 180;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)));
-}
-
-function distanceKmFromText(text) {
+function minutesFromDurationText(text) {
   if (!text) return null;
-  const km = text.match(/([\d.,]+)\s*km/);
-  if (km) return parseFloat(km[1].replace(",", ""));
-  const m = text.match(/([\d.,]+)\s*m\b/);
-  if (m) return parseFloat(m[1].replace(",", "")) / 1000;
-  return null;
+  const h = text.match(/(\d+)\s*시간/);
+  const m = text.match(/(\d+)\s*분/);
+  if (!h && !m) return null;
+  return (h ? parseInt(h[1], 10) * 60 : 0) + (m ? parseInt(m[1], 10) : 0);
 }
 
 function googleModeLabel(googleMode) {
@@ -774,16 +762,12 @@ ${currentDay}일차 여행이며, 아래는 고정된 출발지/도착지와 자
 ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도: ${m.lng}`).join("\n")}
 
 요청사항:
-1. 부모님 체력 부담을 최소화하고 대중교통 효율이 좋은 순서로 후보 장소들을 정렬하세요.
-2. 출발지 → (정렬된 장소들) → 도착지, 각 구간별로 가장 적절한 이동수단(지하철/도보/택시 중 하나)을 제안하세요.
-3. ★ 소요시간은 절대 언급하지 마세요 — 당신은 실제 시간을 정확히 계산할 수 없습니다. 앱이 실제 소요시간을 직접 계산합니다.
-4. 아래 JSON 형식으로만 응답하세요. 설명 문구, 마크다운, 코드블록 없이 순수 JSON만 반환하세요.
+1. 부모님 체력 부담을 최소화하고 이동 효율이 좋은 순서로 후보 장소들을 정렬하세요.
+2. ★ 이동수단이나 소요시간은 절대 언급하지 마세요 — 앱이 구간마다 실제 이동수단과 시간을 직접 계산해서 정합니다. 당신은 순서만 정하세요.
+3. 아래 JSON 형식으로만 응답하세요. 설명 문구, 마크다운, 코드블록 없이 순수 JSON만 반환하세요.
 
 {
-  "orderedIds": ["id1", "id2"],
-  "segments": [
-    {"from": "출발지 이름", "to": "다음 장소 이름", "mode": "지하철"}
-  ]
+  "orderedIds": ["id1", "id2"]
 }`;
       const result = await callGemini(prompt);
       const orderedIds = Array.isArray(result.orderedIds) ? result.orderedIds : [];
@@ -792,28 +776,23 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         .filter(Boolean);
       const remaining = middles.filter((m) => !orderedIds.includes(m.id));
       const finalOrder = [...reordered, ...remaining];
-      const aiSegments = Array.isArray(result.segments) ? result.segments : [];
 
-      // 최종 순서로 실제 경로를 구성하고, 구간마다 AI가 제안한 교통수단 기준으로 진짜 소요시간을 계산
+      // 최종 순서로 실제 경로를 구성하고, 구간마다 규칙(도보 20분 이내→도보, 택시 20분 이내→택시, 그 외→대중교통)에 따라 실제 이동수단·시간을 계산
       const finalRoute = computeRoute(currentDay, finalOrder);
       const legs = [];
       for (let i = 0; i < finalRoute.length - 1; i++) {
-        const from = finalRoute[i];
-        const to = finalRoute[i + 1];
-        const mode = aiSegments[i]?.mode || "지하철";
-        legs.push({ from, to, mode });
+        legs.push({ from: finalRoute[i], to: finalRoute[i + 1] });
       }
       const segments = await Promise.all(
         legs.map(async (leg) => {
           const info = await getLegInfo(
             { lat: leg.from.lat, lng: leg.from.lng },
-            { lat: leg.to.lat, lng: leg.to.lng },
-            leg.mode
+            { lat: leg.to.lat, lng: leg.to.lng }
           );
           return {
             from: leg.from.name,
             to: leg.to.name,
-            mode: info ? googleModeLabel(info.mode) : leg.mode,
+            mode: info ? googleModeLabel(info.mode) : "지하철",
             duration: info ? info.duration : "계산 실패",
             distance: info ? info.distance : null,
             estimated: !info,
@@ -1082,7 +1061,12 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         (response, status) => {
           const el = response?.rows?.[0]?.elements?.[0];
           if (status === "OK" && el && el.status === "OK") {
-            resolve({ duration: el.duration.text, distance: el.distance.text, mode: googleMode });
+            resolve({
+              duration: el.duration.text,
+              distance: el.distance.text,
+              durationSeconds: el.duration.value,
+              mode: googleMode,
+            });
           } else {
             if (status !== "OK") console.warn("DistanceMatrix 실패:", googleMode, status);
             else if (el) console.warn("DistanceMatrix 경로 없음:", googleMode, el.status);
@@ -1093,26 +1077,20 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     });
   }, []);
 
+  const TWENTY_MIN = 20 * 60;
+
+  // 규칙: 도보 20분 이내면 도보, 아니면 택시가 20분 이내면 택시, 그것도 넘으면 대중교통
+  // (AI가 이동수단을 추측하지 않고, 매번 구글맵 실측 시간으로 규칙에 따라 자동 결정)
   const getLegInfo = useCallback(
-    async (origin, destination, modeStr) => {
-      const modeMap = { 도보: "WALKING", 지하철: "TRANSIT", 전철: "TRANSIT", 버스: "TRANSIT", 택시: "DRIVING", 차: "DRIVING" };
-      let googleMode = "TRANSIT";
-      if (modeStr) {
-        const hit = Object.keys(modeMap).find((k) => modeStr.includes(k));
-        if (hit) googleMode = modeMap[hit];
-      }
-      const primary = await queryDistance(origin, destination, googleMode);
-      if (primary) return primary;
-      // 실패 시 대체 수단: 가까운 거리(3km 이내)는 도보로, 먼 거리는 택시(자동차)로 재시도
-      // — 가까운 거리는 구글이 지하철/버스 경로 자체를 안 주는 경우가 많고,
-      //   먼 거리(공항↔숙소 등)를 무작정 도보로 대체하면 "도보 14시간" 같은 말도 안 되는 결과가 나오기 때문
-      const straightKm = haversineKm(origin, destination);
-      const fallbackMode = straightKm <= 3 ? "WALKING" : "DRIVING";
-      if (googleMode !== fallbackMode) {
-        const fallback = await queryDistance(origin, destination, fallbackMode);
-        if (fallback) return fallback;
-      }
-      return null;
+    async (origin, destination) => {
+      const walk = await queryDistance(origin, destination, "WALKING");
+      if (walk && walk.durationSeconds <= TWENTY_MIN) return walk;
+      const drive = await queryDistance(origin, destination, "DRIVING");
+      if (drive && drive.durationSeconds <= TWENTY_MIN) return drive;
+      const transit = await queryDistance(origin, destination, "TRANSIT");
+      if (transit) return transit;
+      // 대중교통 경로 자체가 없는 곳이면, 그나마 계산됐던 것 중 하나로 대체 (택시 우선)
+      return drive || walk || null;
     },
     [queryDistance]
   );
@@ -1123,17 +1101,18 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     const route = computeRoute(currentDay, days[currentDay]?.locations || []);
     if (route.length < 2) return;
     const existingSegments = days[currentDay]?.segments;
-    // 예전에 "도보 14시간" 같은 말도 안 되는 결과가 저장돼 있으면 무효 처리하고 다시 계산
-    const hasNonsenseWalk = existingSegments?.some((s) => {
-      if (s.mode !== "도보") return false;
-      const km = distanceKmFromText(s.distance);
-      return km != null && km > 3;
+    // 예전 방식(무조건 지하철 우선)으로 계산된 결과나, "도보 38분"처럼 새 규칙(20분 룰)에
+    // 어긋나는 결과가 저장돼 있으면 무효 처리하고 다시 계산
+    const violatesRule = existingSegments?.some((s) => {
+      if (s.mode !== "도보" && s.mode !== "택시") return false;
+      const min = minutesFromDurationText(s.duration);
+      return min != null && min > 20;
     });
     const alreadyOk =
       existingSegments &&
       existingSegments.length === route.length - 1 &&
       !existingSegments.some((s) => s.estimated) &&
-      !hasNonsenseWalk;
+      !violatesRule;
     if (alreadyOk) return;
     let cancelled = false;
     (async () => {
@@ -1143,8 +1122,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         legs.map(async (leg) => {
           const info = await getLegInfo(
             { lat: leg.from.lat, lng: leg.from.lng },
-            { lat: leg.to.lat, lng: leg.to.lng },
-            "지하철"
+            { lat: leg.to.lat, lng: leg.to.lng }
           );
           return {
             from: leg.from.name,
