@@ -123,7 +123,7 @@ const FAMILY_MEMBERS = ["아빠", "엄마", "오빠", "가령"];
 const TRIP_STORAGE_KEY = "tokyo-trip-shared-data";
 
 const GLASS =
-  "bg-white/80 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
+  "bg-white/72 backdrop-blur-xl border border-white/60 rounded-3xl shadow-xl shadow-black/10";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -920,6 +920,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
   /* ---------------- 아카이빙 ---------------- */
   const archiveSearchRef = useRef(null);
   const [archiveCategory, setArchiveCategory] = useState("관광지");
+  const [archiveFilter, setArchiveFilter] = useState("전체"); // 보관함 목록 표시 필터
   useEffect(() => {
     if (!mapsLoaded || !archiveSearchRef.current || !window.google || activeTab !== "archive") return;
     const ac = new window.google.maps.places.Autocomplete(archiveSearchRef.current, {
@@ -2024,13 +2025,41 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
               )}
             </GlassCard>
 
+            <div className="flex gap-2">
+              {["전체", "관광지", "맛집"].map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setArchiveFilter(f)}
+                  className={`px-4 py-2 rounded-2xl text-sm font-medium flex items-center gap-1.5 ${
+                    archiveFilter === f
+                      ? "bg-slate-900 text-white"
+                      : "bg-white/60 text-stone-600 border border-white/60"
+                  }`}
+                >
+                  {f === "맛집" ? <Utensils size={14} /> : f === "관광지" ? <Camera size={14} /> : null}
+                  {f}
+                  <span className="text-xs opacity-70">
+                    ({f === "전체" ? archives.length : archives.filter((a) => a.category === f).length})
+                  </span>
+                </button>
+              ))}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {archives.length === 0 && (
                 <p className="text-sm text-stone-600 col-span-full text-center py-6">
                   보관함이 비어있어요. 위 검색창에서 장소를 추가해보세요.
                 </p>
               )}
-              {archives.map((a) => (
+              {archives.length > 0 &&
+                archives.filter((a) => archiveFilter === "전체" || a.category === archiveFilter).length === 0 && (
+                  <p className="text-sm text-stone-600 col-span-full text-center py-6">
+                    이 분류에 해당하는 장소가 없어요.
+                  </p>
+                )}
+              {archives
+                .filter((a) => archiveFilter === "전체" || a.category === archiveFilter)
+                .map((a) => (
                 <GlassCard key={a.id} className="overflow-hidden flex flex-col gap-0 p-0">
                   {a.photoUrl ? (
                     <img src={a.photoUrl} alt={a.name} className="w-full h-36 object-cover" />
