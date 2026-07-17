@@ -146,6 +146,12 @@ function placeMapUrl(item) {
   return null;
 }
 
+function googleModeLabel(googleMode) {
+  if (googleMode === "WALKING") return "도보";
+  if (googleMode === "DRIVING") return "택시";
+  return "지하철";
+}
+
 function locationEmoji(stop) {
   if (stop.type === "airport") return "✈️";
   if (stop.type === "hotel") return "🏨";
@@ -787,7 +793,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
           return {
             from: leg.from.name,
             to: leg.to.name,
-            mode: leg.mode,
+            mode: info ? googleModeLabel(info.mode) : leg.mode,
             duration: info ? info.duration : "계산 실패",
             distance: info ? info.distance : null,
             estimated: !info,
@@ -1005,19 +1011,47 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     [accommodation]
   );
 
+  /* ---------------- 아카이빙에 저장된(또는 방금 추가된) 장소마다, 숙소 기준 실제 도보 거리를 자동으로 채워넣기 ---------------- */
+  useEffect(() => {
+    if (!mapsLoaded || !distanceServiceRef.current || !accommodation) return;
+    const pending = archives.filter((a) => a.walking === undefined && a.lat != null && a.lng != null);
+    if (pending.length === 0) return;
+    let cancelled = false;
+    distanceServiceRef.current.getDistanceMatrix(
+      {
+        origins: [{ lat: accommodation.lat, lng: accommodation.lng }],
+        destinations: pending.map((a) => ({ lat: a.lat, lng: a.lng })),
+        travelMode: window.google.maps.TravelMode.WALKING,
+      },
+      (response, status) => {
+        if (cancelled) return;
+        const elements = status === "OK" ? response?.rows?.[0]?.elements || [] : [];
+        setArchives((prev) =>
+          prev.map((a) => {
+            const idx = pending.findIndex((p) => p.id === a.id);
+            if (idx === -1) return a;
+            const el = elements[idx];
+            if (el && el.status === "OK") {
+              return { ...a, walking: { duration: el.duration.text, distance: el.distance.text } };
+            }
+            return { ...a, walking: null };
+          })
+        );
+      }
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [mapsLoaded, accommodation, archives]);
+
   // 두 지점 사이 실제 이동시간/거리를 지정된 교통수단으로 구글맵에 직접 계산시키는 헬퍼
   // (경로 최적화의 "이동 수단 제안" 구간에도 사용 — AI가 시간을 추측하지 않도록)
-  const getLegInfo = useCallback((origin, destination, modeStr) => {
+  // 한 가지 이동수단으로 구글맵에 실제 거리를 물어보는 저수준 헬퍼 (실패하면 null)
+  const queryDistance = useCallback((origin, destination, googleMode) => {
     return new Promise((resolve) => {
       if (!distanceServiceRef.current || !window.google) {
         resolve(null);
         return;
-      }
-      const modeMap = { 도보: "WALKING", 지하철: "TRANSIT", 전철: "TRANSIT", 버스: "TRANSIT", 택시: "DRIVING", 차: "DRIVING" };
-      let googleMode = "TRANSIT";
-      if (modeStr) {
-        const hit = Object.keys(modeMap).find((k) => modeStr.includes(k));
-        if (hit) googleMode = modeMap[hit];
       }
       distanceServiceRef.current.getDistanceMatrix(
         {
@@ -1028,8 +1062,10 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
         (response, status) => {
           const el = response?.rows?.[0]?.elements?.[0];
           if (status === "OK" && el && el.status === "OK") {
-            resolve({ duration: el.duration.text, distance: el.distance.text });
+            resolve({ duration: el.duration.text, distance: el.distance.text, mode: googleMode });
           } else {
+            if (status !== "OK") console.warn("DistanceMatrix 실패:", googleMode, status);
+            else if (el) console.warn("DistanceMatrix 경로 없음:", googleMode, el.status);
             resolve(null);
           }
         }
@@ -1037,13 +1073,37 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     });
   }, []);
 
+  const getLegInfo = useCallback(
+    async (origin, destination, modeStr) => {
+      const modeMap = { 도보: "WALKING", 지하철: "TRANSIT", 전철: "TRANSIT", 버스: "TRANSIT", 택시: "DRIVING", 차: "DRIVING" };
+      let googleMode = "TRANSIT";
+      if (modeStr) {
+        const hit = Object.keys(modeMap).find((k) => modeStr.includes(k));
+        if (hit) googleMode = modeMap[hit];
+      }
+      const primary = await queryDistance(origin, destination, googleMode);
+      if (primary) return primary;
+      // 가까운 거리는 구글이 지하철/버스 경로 자체를 안 주는 경우가 많아서, 실패하면 도보로 한 번 더 시도
+      if (googleMode !== "WALKING") {
+        const fallback = await queryDistance(origin, destination, "WALKING");
+        if (fallback) return fallback;
+      }
+      return null;
+    },
+    [queryDistance]
+  );
+
   /* ---------------- AI 최적화를 안 돌려도, 장소를 추가/순서변경만 해도 구간별 실제 이동시간을 자동 계산 ---------------- */
   useEffect(() => {
     if (!mapsLoaded || !distanceServiceRef.current) return;
-    const route = buildRoute(currentDay);
+    const route = computeRoute(currentDay, days[currentDay]?.locations || []);
     if (route.length < 2) return;
     const existingSegments = days[currentDay]?.segments;
-    if (existingSegments && existingSegments.length === route.length - 1) return;
+    const alreadyOk =
+      existingSegments &&
+      existingSegments.length === route.length - 1 &&
+      !existingSegments.some((s) => s.estimated);
+    if (alreadyOk) return;
     let cancelled = false;
     (async () => {
       const legs = [];
@@ -1058,7 +1118,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
           return {
             from: leg.from.name,
             to: leg.to.name,
-            mode: "지하철",
+            mode: info ? googleModeLabel(info.mode) : "지하철",
             duration: info ? info.duration : "계산 실패",
             distance: info ? info.distance : null,
             estimated: !info,
@@ -1076,7 +1136,7 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     return () => {
       cancelled = true;
     };
-  }, [mapsLoaded, currentDay, accommodation, days[currentDay]?.locations, buildRoute, computeRoute, getLegInfo]);
+  }, [mapsLoaded, currentDay, accommodation, days[currentDay]?.locations, computeRoute, getLegInfo]);
 
   const getAiRecommendations = async () => {
     setRecommendLoading(true);
@@ -1148,6 +1208,7 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
         comments: [],
         aiInfo: null,
         aiLoading: false,
+        walking: rec.walking || null,
       },
     ]);
     setAiRecommendations((prev) => prev.filter((r) => r.name !== rec.name));
@@ -1904,6 +1965,14 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                   </div>
 
                   <Stars value={a.rating} onChange={(n) => updateArchive(a.id, { rating: n })} />
+
+                  {a.walking ? (
+                    <span className="self-start flex items-center gap-1 text-[11px] font-medium text-stone-700 bg-stone-100/80 rounded-full px-2 py-0.5">
+                      <Clock size={11} /> 숙소에서 실제 도보 {a.walking.duration} ({a.walking.distance})
+                    </span>
+                  ) : accommodation && a.walking !== null ? (
+                    <span className="text-[11px] text-stone-400">거리 계산 중...</span>
+                  ) : null}
 
                   {a.comment && <p className="text-xs text-stone-500 leading-relaxed">{a.comment}</p>}
 
