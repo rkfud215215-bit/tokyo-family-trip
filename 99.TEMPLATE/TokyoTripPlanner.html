@@ -480,6 +480,13 @@ function TokyoTripPlanner() {
   const [archives, setArchives] = useState([]);
   const [addToDayModal, setAddToDayModal] = useState(null); // archive item being added
 
+  const [todos, setTodos] = useState([
+    { id: uid(), text: "숙소 예약하기", done: false },
+    { id: uid(), text: "항공권 예약하기", done: false },
+    { id: uid(), text: "Visit Japan Web 등록하기", done: false },
+  ]);
+  const [todoInput, setTodoInput] = useState("");
+
   /* ---------------- 이 브라우저의 "나" 이름 불러오기 (기기별 개인 저장) ---------------- */
   useEffect(() => {
     if (!unlocked) return;
@@ -523,6 +530,7 @@ function TokyoTripPlanner() {
           if (typeof parsed.exchangeRate === "number") setExchangeRate(parsed.exchangeRate);
           if (parsed.expenses) setExpenses(parsed.expenses);
           if (parsed.archives) setArchives(parsed.archives);
+          if (parsed.todos) setTodos(parsed.todos);
         }
       } catch (e) {
         // 저장된 데이터 없음 — 이 여행의 첫 저장이 될 예정
@@ -539,7 +547,7 @@ function TokyoTripPlanner() {
       try {
         await storage.set(
           TRIP_STORAGE_KEY,
-          JSON.stringify({ accommodation, days, exchangeRate, expenses, archives }),
+          JSON.stringify({ accommodation, days, exchangeRate, expenses, archives, todos }),
           true
         );
         setSyncError("");
@@ -550,7 +558,7 @@ function TokyoTripPlanner() {
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [unlocked, myName, dataLoaded, accommodation, days, exchangeRate, expenses, archives]);
+  }, [unlocked, myName, dataLoaded, accommodation, days, exchangeRate, expenses, archives, todos]);
 
   /* ---------------- Google Maps 스크립트 로드 (PIN 잠금 해제 후에만) ---------------- */
   useEffect(() => {
@@ -946,6 +954,16 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     return () => listener.remove();
   }, [mapsLoaded, activeTab]);
 
+  const addTodo = () => {
+    const text = todoInput.trim();
+    if (!text) return;
+    setTodos((prev) => [...prev, { id: uid(), text, done: false }]);
+    setTodoInput("");
+  };
+  const toggleTodo = (id) =>
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+  const removeTodo = (id) => setTodos((prev) => prev.filter((t) => t.id !== id));
+
   const updateArchive = (id, patch) =>
     setArchives((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
 
@@ -1333,6 +1351,7 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
     { id: "schedule", label: "일정 & 지도", icon: MapPin },
     { id: "expense", label: "경비 정산", icon: Wallet },
     { id: "archive", label: "아카이빙", icon: Bookmark },
+    { id: "todo", label: "준비물 체크", icon: Check },
   ];
 
   const currentRoute = buildRoute(currentDay);
@@ -2108,6 +2127,63 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
                 </GlassCard>
               ))}
             </div>
+          </div>
+
+          {/* ================= 준비물 체크(TODO) 탭 ================= */}
+          <div className={activeTab === "todo" ? "flex flex-col gap-6" : "hidden"}>
+            <GlassCard className="p-5 flex flex-col gap-4">
+              <div className="flex items-center gap-2 text-stone-700 font-semibold">
+                <Check size={16} /> 여행 전 준비물 체크
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={todoInput}
+                  onChange={(e) => setTodoInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addTodo()}
+                  placeholder="할 일을 입력하세요 (예: 유심 구매하기)"
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50/70 border border-stone-100 text-sm outline-none focus:ring-2 focus:ring-stone-300"
+                />
+                <button
+                  onClick={addTodo}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-slate-900 text-white text-sm font-semibold shrink-0"
+                >
+                  <Plus size={16} /> 추가
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {todos.length === 0 && (
+                  <p className="text-sm text-stone-600 py-4 text-center">
+                    아직 등록된 할 일이 없어요.
+                  </p>
+                )}
+                {todos.map((t) => (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-stone-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={t.done}
+                      onChange={() => toggleTodo(t.id)}
+                      className="accent-slate-900 w-4 h-4 shrink-0"
+                    />
+                    <span
+                      className={`flex-1 text-sm ${
+                        t.done ? "line-through text-stone-500" : "text-stone-700"
+                      }`}
+                    >
+                      {t.text}
+                    </span>
+                    <button
+                      onClick={() => removeTodo(t.id)}
+                      className="text-stone-300 hover:text-rose-400 shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
           </div>
         </main>
       </div>
