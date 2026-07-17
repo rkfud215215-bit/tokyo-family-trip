@@ -146,6 +146,26 @@ function placeMapUrl(item) {
   return null;
 }
 
+// 두 좌표 사이 직선거리(km) — API 호출 없이, 지하철 실패 시 도보/택시 중 뭘로 대체할지 판단하는 용도
+function haversineKm(a, b) {
+  const R = 6371;
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180;
+  const dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const lat1 = (a.lat * Math.PI) / 180;
+  const lat2 = (b.lat * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+function distanceKmFromText(text) {
+  if (!text) return null;
+  const km = text.match(/([\d.,]+)\s*km/);
+  if (km) return parseFloat(km[1].replace(",", ""));
+  const m = text.match(/([\d.,]+)\s*m\b/);
+  if (m) return parseFloat(m[1].replace(",", "")) / 1000;
+  return null;
+}
+
 function googleModeLabel(googleMode) {
   if (googleMode === "WALKING") return "도보";
   if (googleMode === "DRIVING") return "택시";
@@ -1083,9 +1103,13 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
       }
       const primary = await queryDistance(origin, destination, googleMode);
       if (primary) return primary;
-      // 가까운 거리는 구글이 지하철/버스 경로 자체를 안 주는 경우가 많아서, 실패하면 도보로 한 번 더 시도
-      if (googleMode !== "WALKING") {
-        const fallback = await queryDistance(origin, destination, "WALKING");
+      // 실패 시 대체 수단: 가까운 거리(3km 이내)는 도보로, 먼 거리는 택시(자동차)로 재시도
+      // — 가까운 거리는 구글이 지하철/버스 경로 자체를 안 주는 경우가 많고,
+      //   먼 거리(공항↔숙소 등)를 무작정 도보로 대체하면 "도보 14시간" 같은 말도 안 되는 결과가 나오기 때문
+      const straightKm = haversineKm(origin, destination);
+      const fallbackMode = straightKm <= 3 ? "WALKING" : "DRIVING";
+      if (googleMode !== fallbackMode) {
+        const fallback = await queryDistance(origin, destination, fallbackMode);
         if (fallback) return fallback;
       }
       return null;
@@ -1099,10 +1123,17 @@ ${middles.map((m) => `- id: ${m.id}, 이름: ${m.name}, 위도: ${m.lat}, 경도
     const route = computeRoute(currentDay, days[currentDay]?.locations || []);
     if (route.length < 2) return;
     const existingSegments = days[currentDay]?.segments;
+    // 예전에 "도보 14시간" 같은 말도 안 되는 결과가 저장돼 있으면 무효 처리하고 다시 계산
+    const hasNonsenseWalk = existingSegments?.some((s) => {
+      if (s.mode !== "도보") return false;
+      const km = distanceKmFromText(s.distance);
+      return km != null && km > 3;
+    });
     const alreadyOk =
       existingSegments &&
       existingSegments.length === route.length - 1 &&
-      !existingSegments.some((s) => s.estimated);
+      !existingSegments.some((s) => s.estimated) &&
+      !hasNonsenseWalk;
     if (alreadyOk) return;
     let cancelled = false;
     (async () => {
