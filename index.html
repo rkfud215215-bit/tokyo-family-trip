@@ -498,7 +498,7 @@ function TokyoTripPlanner() {
       setAccInputValue(place.name);
     });
     return () => listener.remove();
-  }, [mapsLoaded]);
+  }, [mapsLoaded, myName]);
 
   /* ---------------- Day별 장소 검색 Autocomplete ---------------- */
   const daySearchRef = useRef(null);
