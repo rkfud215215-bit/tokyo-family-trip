@@ -1505,51 +1505,53 @@ ${theme ? `★ 반드시 지켜야 할 세부 조건: "${theme}" — 이 조건�
 
         {/* ---------- 메인 컨텐츠 ---------- */}
         <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-6xl mx-auto w-full">
-          {/* 상단 고정 영역: 공항 & 숙소 */}
-          <GlassCard className="p-5 mb-6 sticky top-2 z-20">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex items-center gap-3 flex-1 bg-stone-50 rounded-2xl px-4 py-3">
-                <div className="w-9 h-9 rounded-xl bg-stone-200 flex items-center justify-center shrink-0">
-                  <Plane size={16} className="text-stone-700" />
+          {/* 상단 고정 영역: 공항 & 숙소 — 일정&지도 탭에서만 노출 (다른 탭에서 모바일 화면 낭비 방지) */}
+          {activeTab === "schedule" && (
+            <GlassCard className="p-3 md:p-5 mb-6 md:sticky md:top-2 z-20">
+              <div className="flex flex-col md:flex-row gap-2 md:gap-4">
+                <div className="flex items-center gap-3 flex-1 bg-stone-50 rounded-2xl px-3 py-2 md:px-4 md:py-3">
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-stone-200 flex items-center justify-center shrink-0">
+                    <Plane size={14} className="text-stone-700" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[11px] md:text-xs text-stone-600">출발/도착 공항</p>
+                    <p className="text-sm font-semibold text-stone-700 truncate">{AIRPORT.name}</p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-stone-600">출발/도착 공항</p>
-                  <p className="text-sm font-semibold text-stone-700 truncate">{AIRPORT.name}</p>
+                <div className="flex items-center gap-3 flex-1 bg-stone-50/70 rounded-2xl px-3 py-2 md:px-4 md:py-3">
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-stone-200/80 flex items-center justify-center shrink-0">
+                    <Home size={14} className="text-stone-700" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] md:text-xs text-stone-600">고정 숙소 (모든 일정의 허브)</p>
+                    <input
+                      ref={accInputRef}
+                      defaultValue={accInputValue}
+                      placeholder="숙소 이름을 검색하세요 (예: 시부야 스트림 엑셀 호텔)"
+                      className="w-full bg-transparent text-sm font-semibold text-stone-700 placeholder:font-normal placeholder:text-stone-600 outline-none"
+                    />
+                  </div>
+                  {accommodation && <Check size={16} className="text-slate-900 shrink-0" />}
                 </div>
               </div>
-              <div className="flex items-center gap-3 flex-1 bg-stone-50/70 rounded-2xl px-4 py-3">
-                <div className="w-9 h-9 rounded-xl bg-stone-200/80 flex items-center justify-center shrink-0">
-                  <Home size={16} className="text-stone-700" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-stone-600">고정 숙소 (모든 일정의 허브)</p>
-                  <input
-                    ref={accInputRef}
-                    defaultValue={accInputValue}
-                    placeholder="숙소 이름을 검색하세요 (예: 시부야 스트림 엑셀 호텔)"
-                    className="w-full bg-transparent text-sm font-semibold text-stone-700 placeholder:font-normal placeholder:text-stone-600 outline-none"
-                  />
-                </div>
-                {accommodation && <Check size={16} className="text-slate-900 shrink-0" />}
-              </div>
-            </div>
-            {!mapsLoaded && !mapsError && (
-              <p className="mt-3 text-xs text-stone-600 flex items-center gap-1">
-                <Loader2 size={12} className="animate-spin" /> 지도 서비스를 불러오는 중이에요...
-              </p>
-            )}
-            {mapsError === "no-key" && (
-              <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
-                <AlertCircle size={12} /> Google Maps API 키를 코드 상단에 입력해야 지도/검색 기능이 동작해요.
-              </p>
-            )}
-            {mapsError === "load-failed" && (
-              <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
-                <AlertCircle size={12} /> 키는 입력돼 있는데 지도를 불러오지 못했어요. Google Cloud Console에서
-                결제 계정 연결 / API 활성화 / 리퍼러 제한 설정을 확인해주세요.
-              </p>
-            )}
-          </GlassCard>
+              {!mapsLoaded && !mapsError && (
+                <p className="mt-3 text-xs text-stone-600 flex items-center gap-1">
+                  <Loader2 size={12} className="animate-spin" /> 지도 서비스를 불러오는 중이에요...
+                </p>
+              )}
+              {mapsError === "no-key" && (
+                <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
+                  <AlertCircle size={12} /> Google Maps API 키를 코드 상단에 입력해야 지도/검색 기능이 동작해요.
+                </p>
+              )}
+              {mapsError === "load-failed" && (
+                <p className="mt-3 text-xs text-rose-500 flex items-center gap-1">
+                  <AlertCircle size={12} /> 키는 입력돼 있는데 지도를 불러오지 못했어요. Google Cloud Console에서
+                  결제 계정 연결 / API 활성화 / 리퍼러 제한 설정을 확인해주세요.
+                </p>
+              )}
+            </GlassCard>
+          )}
 
           {/* ================= 일정 & 지도 탭 ================= */}
           <div className={activeTab === "schedule" ? "flex flex-col gap-6" : "hidden"}>
